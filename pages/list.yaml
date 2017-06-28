@@ -1,0 +1,14 @@
+iterate:
+  {{if .HasReminders}}
+  - send_text: "List of your reminders:"
+  {{range $number,$preview := .ReminderPreviews}}
+  - send_text: "{{$number}}. {{$preview}}"
+  {{end}}
+  - set_input_handler: "on_get_or_delete"
+  - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
+  {{else}}
+  - send_text_with_buttons:
+    - "You don't have any reminders yet. You could create one."
+    - { text: "create", payload: "page://creation",intents:["create","new","add"] }
+  {{end}}
+

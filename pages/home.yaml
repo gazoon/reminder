@@ -1,0 +1,5 @@
+iterate:
+  - send_text_with_buttons:
+    - "What do you want to do?"
+    - { text: "create", payload: "page://creation",intents:["create","new","add"] }
+    - { text: "list", payload: "page://list",intents:["list","show","catalog"] }
