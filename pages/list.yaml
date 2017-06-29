@@ -9,6 +9,6 @@ iterate:
   {{else}}
   - send_text_with_buttons:
     - "You don't have any reminders yet. You could create one."
-    - { text: "create", payload: "page://creation",intents:["create","new","add"] }
+    - { text: "Create", payload: "page://creation",intents:["create","new","add"] }
   {{end}}
 

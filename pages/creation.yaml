@@ -5,7 +5,7 @@ iterate:
     {{if eq .ErrorMsg ""}}
     "Enter title."
     {{else}}
-    "Problems with title {{.ErrorMsg}}. Type again."
+    "Problems with title: {{.ErrorMsg}}. Type again."
     {{end}}
   {{else if eq .Step "date"}}
   - set_input_handler: "on_date"
@@ -13,7 +13,7 @@ iterate:
     {{if eq .ErrorMsg ""}}
     "Enter date."
     {{else}}
-    "Problems with date {{.ErrorMsg}}. Type again."
+    "Problems with date: {{.ErrorMsg}}. Type again."
     {{end}}
   {{else if eq .Step "description"}}
   - set_input_handler: "on_description"
@@ -21,19 +21,19 @@ iterate:
     {{if eq .ErrorMsg ""}}
     - "Enter Description (optional)."
     {{else}}
-    - "Problems with description {{.ErrorMsg}}. Type again."
+    - "Problems with description: {{.ErrorMsg}}. Type again."
     {{end}}
-    - { text: "done", payload: "action://done" }
+    - { text: "Done", payload: "page://done", intents:["done","ready","finish"] }
   {{else if eq .Step "attachment"}}
   - send_text_with_buttons:
     {{if eq .ErrorMsg ""}}
     - "Upload attachment (optional)."
     {{else}}
-    - "Problems with attachment {{.ErrorMsg}}. Upload again."
+    - "Problems with attachment: {{.ErrorMsg}}. Upload again."
     {{end}}
-    - { text: "done", payload: "action://done" }
+    - { text: "Done", payload: "page://done",intents:["done","ready","finish"] }
   {{end}}
 
 intents:
   - words: ["cancel","close","exit","escape"]
-    handler: "callback://cancel"
+    handler: "page://cancel"

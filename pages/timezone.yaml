@@ -1,0 +1,13 @@
+iterate:
+  {{if .Changed}}
+  - send_text_with_buttons:
+    - "Timezone changed"
+    - { text: "Home", payload: "page://home",intents:["home","root","main"] }
+  {{else}}
+  - set_input_handler: "on_timezone"
+  {{ if eq .ErrorMsg ""}}
+  - send_text: "Type your timezone (e.g. -3 or +2):"
+  {{else}}
+  - send_text: "Problems with timezone: {{.ErrorMsg}}. Type again:"
+  {{end}}
+  {{end}}

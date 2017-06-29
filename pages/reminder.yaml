@@ -5,6 +5,6 @@ iterate:
   - send_text: {{.Description}}
     {{end}}
   - send_reminder_attachments: {{.ReminderID}}
-  - send_text_with_buttons:
-    - "I don't understand you, sorry."
-    - { text: "home", payload: "page://home",intents:["home","root","main"] }
+  - send_buttons:
+    - { text: "All reminders", payload: "page://list",intents:["list","show","catalog"] }
+
