@@ -1,13 +1,23 @@
 iterate:
-  {{if .Changed}}
-  - send_text_with_buttons:
-    - "Timezone changed"
-    - { text: "Home", payload: "page://home",intents:["home","root","main"] }
-  {{else}}
+  - goto:
+      if: {{.Changed}}
+      then: timezone_changed
+
   - set_input_handler: "on_timezone"
-  {{ if eq .ErrorMsg ""}}
-  - send_text: "Type your timezone (e.g. -3 or +2):"
-  {{else}}
-  - send_text: "Problems with timezone: {{.ErrorMsg}}. Type again:"
-  {{end}}
-  {{end}}
+  - send_text:
+      {{ if eq .ErrorMsg ""}}
+      "Type your timezone (e.g. -3 or +2):"
+      {{else}}
+      "Problems with timezone: {{.ErrorMsg}}. Type again:"
+      {{end}}
+
+states:
+  timezone_changed:
+    - send_text: "Timezone changed"
+    - send_buttons:
+        - { text: "Home", handler: "page://home",intents:["home","root","main"] }
+
+
+
+
+

@@ -1,4 +1,4 @@
 iterate:
-  - send_text_with_buttons:
-    - "Reminder successfully created."
-    - { text: "Home", payload: "page://home",intents:["home","root","main"] }
+  - send_text: "Reminder successfully created."
+  - send_buttons:
+      - { text: "Home", handler: "page://home",intents:["home","root","main"] }

@@ -1,10 +1,11 @@
 iterate:
   - send_text: {{.Title}}
   - send_text: "Remind at {{.Date}}"
-    {{if ne .Description ""}}
   - send_text: {{.Description}}
-    {{end}}
-  - send_reminder_attachments: {{.ReminderID}}
+  - send_attachments: $reminderAttachments
+#  - for_each:
+#      function: send_attachment
+#      values: $reminderAttachments
   - send_buttons:
-    - { text: "All reminders", payload: "page://list",intents:["list","show","catalog"] }
+      - { text: "All reminders", handler: "page://list",intents:["list","show","catalog"] }
 

@@ -1,6 +1,6 @@
 iterate:
-  - send_text_with_buttons:
-    - "What do you want to do?"
-    - { text: "Create", payload: "page://creation",intents:["create","new","add"] }
-    - { text: "List", payload: "page://list",intents:["list","show","catalog"] }
-    - { text: "Chane timezone", payload: "page://timezone"}
+  - send_text: "What do you want to do?"
+  - send_buttons:
+      - { text: "Create", handler: "page://creation",intents:["create","new","add"] }
+      - { text: "List", handler: "page://list",intents:["list","show","catalog"] }
+      - { text: "Chane timezone", handler: "page://timezone"}

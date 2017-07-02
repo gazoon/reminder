@@ -7,8 +7,29 @@ iterate:
   - set_input_handler: "on_get_or_delete"
   - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
   {{else}}
-  - send_text_with_buttons:
-    - "You don't have any reminders yet. You could create one."
-    - { text: "Create", payload: "page://creation",intents:["create","new","add"] }
+  - send_text: "You don't have any reminders yet. You could create one."
+  - send_buttons:
+    - { text: "Create", handler: "page://creation",intents:["create","new","add"] }
   {{end}}
+
+states:
+  has_reminders:
+    - send_text: "List of your reminders:"
+    - send_texts: $reminderPreviews
+#    - for_each:
+#        function: send_text
+#        values: $reminderPreviews
+    - set_input_handler: "on_get_or_delete"
+    - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
+
+  no_reminders:
+    - send_text: "You don't have any reminders yet. You could create one."
+    - send_buttons:
+        - { text: "Create", handler: "page://creation",intents:["create","new","add"] }
+
+
+
+
+config:
+  preview_template: "1. %.30s"
 

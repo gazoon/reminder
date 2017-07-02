@@ -1,4 +1,4 @@
 iterate:
-  - send_text_with_buttons:
-    - "I don't understand you, sorry."
-    - { text: "Home", payload: "page://home",intents:["home","root","main"] }
+  - send_text: "I don't understand you, sorry."
+  - send_buttons:
+      - { text: "Home", handler: "page://home",intents:["home","root","main"] }
