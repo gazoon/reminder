@@ -1,18 +1,11 @@
-iterate:
-  {{if .HasReminders}}
-  - send_text: "List of your reminders:"
-  {{range $number,$preview := .ReminderPreviews}}
-  - send_text: "{{$number}}. {{$preview}}"
-  {{end}}
-  - set_input_handler: "on_get_or_delete"
-  - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
-  {{else}}
-  - send_text: "You don't have any reminders yet. You could create one."
-  - send_buttons:
-    - { text: "Create", handler: "page://creation",intents:["create","new","add"] }
-  {{end}}
+main:
+  - goto:
+      - if: {{ .HasReminders }}
+        then: has_reminders
+      - no_reminders
 
-states:
+
+parts:
   has_reminders:
     - send_text: "List of your reminders:"
     - send_texts: $reminderPreviews

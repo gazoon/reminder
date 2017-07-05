@@ -1,4 +1,10 @@
-iterate:
+main:
+  - goto:
+      - if: {{.Cancelation}}
+        then: cancel
   - send_text: "Reminder successfully created."
   - send_buttons:
       - { text: "Home", handler: "page://home",intents:["home","root","main"] }
+parts:
+  cancel:
+    - redirect: "page://home"

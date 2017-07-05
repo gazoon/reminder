@@ -1,4 +1,4 @@
-iterate:
+main:
   - send_text: {{.Title}}
   - send_text: "Remind at {{.Date}}"
   - send_text: {{.Description}}

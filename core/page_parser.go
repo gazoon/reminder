@@ -2,11 +2,12 @@ package core
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 	"strconv"
 	"strings"
 	templ "text/template"
+
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 const (

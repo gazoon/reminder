@@ -1,51 +1,15 @@
-iterate:
-  {{if eq .Step "title"}}
-  - set_input_handler: "on_title"
-  - send_text:
-    {{if eq .ErrorMsg ""}}
-    "Enter title."
-    {{else}}
-    "Problems with title: {{.ErrorMsg}}. Type again."
-    {{end}}
-  {{else if eq .Step "date"}}
-  - set_input_handler: "on_date"
-  - send_text:
-    {{if eq .ErrorMsg ""}}
-    "Enter date."
-    {{else}}
-    "Problems with date: {{.ErrorMsg}}. Type again."
-    {{end}}
-  {{else if eq .Step "description"}}
-  - set_input_handler: "on_description"
-  - send_text:
-    {{if eq .ErrorMsg ""}}
-    "Enter Description (optional)."
-    {{else}}
-    "Problems with description: {{.ErrorMsg}}. Type again."
-    {{end}}
-  - send_buttons:
-    - { text: "Done", handler: "page://done", intents:["done","ready","finish"] }
-  {{else if eq .Step "attachment"}}
-  - send_text:
-    {{if eq .ErrorMsg ""}}
-    "Upload attachment (optional)."
-    {{else}}
-    "Problems with attachment: {{.ErrorMsg}}. Upload again."
-    {{end}}
-  - send_buttons:
-    - { text: "Done", handler: "page://done",intents:["done","ready","finish"] }
-  {{end}}
+main:
   - goto:
-      - if: {{eq .Step "title"}}
+      - if: {{eq .State "title"}}
         then: enter_title
-      - if: {{eq .Step "date"}}
+      - if: {{eq .State "date"}}
         then: enter_date
-      - if: {{eq .Step "description"}}
+      - if: {{eq .State "description"}}
         then: enter_description
-      - if: {{eq .Step "attachment"}}
+      - if: {{eq .State "attachment"}}
         then: add_attachment
 
-states:
+parts:
   enter_title:
     - set_input_handler: "on_title"
     - send_text:
@@ -73,7 +37,7 @@ states:
         "Problems with description: {{.ErrorMsg}}. Type again."
         {{end}}
     - send_buttons:
-        - { text: "Done", handler: "page://done", intents:["done","ready","finish"] }
+        - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
 
   add_attachment:
     - send_text:
@@ -83,8 +47,8 @@ states:
         "Problems with attachment: {{.ErrorMsg}}. Upload again."
         {{end}}
     - send_buttons:
-        - { text: "Done", handler: "page://done",intents:["done","ready","finish"] }
+        - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
 
 intents:
   - words: ["cancel","close","exit","escape"]
-    handler: "page://cancel"
+    handler: "page://finish_creation?cancel=true"

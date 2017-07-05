@@ -1,8 +1,6 @@
 package core
 
 import (
-	"context"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -44,8 +42,7 @@ type Button struct {
 
 type Iterator struct {
 	messenger  messenger.Messenger
-	ctx        context.Context
-	session    *Session
+	req        *Request
 	initScript []*Command
 }
 
@@ -71,7 +68,7 @@ func (iter *Iterator) sendText(args interface{}) error {
 	if !ok {
 		return errors.Errorf("called with not string arg %v", args)
 	}
-	_, err := iter.messenger.SendText(iter.ctx, iter.session.ChatID, text)
+	_, err := iter.messenger.SendText(iter.req.Ctx, iter.req.Chat.ID, text)
 	return errors.Wrap(err, "messenger send text")
 }
 
@@ -91,9 +88,9 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	messengerButtons := make([]*messenger.Button, len(buttons))
 	for i, button := range buttons {
 		messengerButtons[i] = &messenger.Button{button.Text, button.Handler}
-		iter.session.AddIntent(&Intent{Words: button.Intents, Handler: button.Handler})
+		iter.req.Session.AddIntent(&Intent{Words: button.Intents, Handler: button.Handler})
 	}
-	_, err = iter.messenger.SendTextWithButtons(iter.ctx, iter.session.ChatID, text, messengerButtons...)
+	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
 	return errors.Wrap(err, "messenger send text with buttons")
 }
 
@@ -102,7 +99,7 @@ func (iter *Iterator) setInputHandler(args interface{}) error {
 	if !ok {
 		return errors.Errorf("expected string arg, got %v", args)
 	}
-	iter.session.SetInputHandler(iter.ctx, handler)
+	iter.req.Session.SetInputHandler(iter.req.Ctx, handler)
 	return nil
 }
 
@@ -207,7 +204,7 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		SendAttachmentCmd:            iter.sendAttachment,
 		SetInputHandlerCmd:           iter.setInputHandler,
 	}
-	logger := logging.FromContextAndBase(iter.ctx, gLogger)
+	logger := logging.FromContextAndBase(iter.req.Ctx, gLogger)
 	for i, cmd := range resultScript {
 		cmdHandler, ok := commandsMapping[cmd.Name]
 		if !ok {

@@ -3,11 +3,22 @@ package core
 import (
 	"context"
 	"github.com/gazoon/bot_libs/logging"
+	"github.com/gazoon/bot_libs/queue/messages"
+	"reminder/models"
 )
 
 var (
 	gLogger = logging.WithPackage("core")
 )
+
+type Request struct {
+	Session *Session
+	Ctx context.Context
+	Msg *msgsqueue.Message
+	Chat *models.Chat
+}
+
+
 
 type Session struct {
 	CurrentPageName string
