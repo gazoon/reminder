@@ -1,11 +1,13 @@
 main:
-  - goto: { if: "{{ .HasReminders }}", then: has_reminders,  else: no_reminders }
+  - goto: { if: "{{ .has_reminders }}", then: has_reminders,  else: no_reminders }
 
 
 parts:
   has_reminders:
     - send_text: "List of your reminders:"
-    - send_texts: $reminderPreviews
+    - foreach:
+        function: send_text
+        values: $reminder_previews
     - set_input_handler: "on_get_or_delete"
     - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
 

@@ -13,12 +13,10 @@ var (
 
 type Request struct {
 	Session *Session
-	Ctx context.Context
-	Msg *msgsqueue.Message
-	Chat *models.Chat
+	Ctx     context.Context
+	Msg     *msgsqueue.Message
+	Chat    *models.Chat
 }
-
-
 
 type Session struct {
 	CurrentPageName string
@@ -33,6 +31,6 @@ func (s *Session) AddIntent(intent *Intent) {
 
 func (s *Session) SetInputHandler(ctx context.Context, handler string) {
 	logger := logging.FromContextAndBase(ctx, gLogger)
-	logger.Info("Change input handler new: %s, old: %s", handler, s.InputHandler)
+	logger.Infof("Change input handler new: %s, old: %s", handler, s.InputHandler)
 	s.InputHandler = handler
 }

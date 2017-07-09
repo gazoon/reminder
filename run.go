@@ -4,32 +4,33 @@ import (
 	"fmt"
 	"reminder/core"
 
+	"context"
+	"reminder/core/pages"
+	"reminder/models"
+
+	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
+	"github.com/gazoon/bot_libs/queue/messages"
 )
 
 func main() {
-	fmt.Println("sdf")
-	telegramMessenger, err := messenger.NewTelegram("441160175:AAHM00D7yNdxU9R5f4njLGEOs-zKBVZXbk4", 5)
+	telegramMessenger, err := messenger.NewTelegram("282857391:AAEEdYoGCEa-MzLMKXUABvSTaOLUSaSS53Y", 5)
 	if err != nil {
 		panic(err)
 	}
-	homePage, err := core.NewHomePage(telegramMessenger)
+	//homePage, err := pages.NewHomePage(telegramMessenger)
+	//if err != nil {
+	//	panic(err)
+	//}
+	listPage, err := pages.NewReminderListPage(telegramMessenger)
 	if err != nil {
 		panic(err)
 	}
-	listPage, err := core.NewReminderListPage(telegramMessenger)
-	if err != nil {
-		panic(err)
-	}
-	a1 := homePage.MainPart
-	a2 := listPage.MainPart
-	b1 := homePage.OtherParts
-	b2 := listPage.OtherParts
-	h := listPage.InputHandlers
-	fmt.Println(logging.ObjToString(a1))
-	fmt.Println(logging.ObjToString(a2))
-	fmt.Println(logging.ObjToString(b1))
-	fmt.Println(logging.ObjToString(b2))
-	fmt.Println(h)
+	session := new(core.Session)
+	msg := &msgsqueue.Message{Chat: &msgsqueue.Chat{ID: 231193206}}
+	chat := &models.Chat{Chat: *msg.Chat}
+	req := &core.Request{Ctx: logging.NewContext(context.Background(), log.WithField("fooo", "bar")), Msg: msg, Chat: chat, Session: session}
+	uri, err := listPage.Enter(req, nil)
+	fmt.Println(uri, err)
 }

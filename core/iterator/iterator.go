@@ -1,12 +1,16 @@
-package core
+package iterator
 
 import (
+	"reminder/core"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
+
+var gLogger = logging.WithPackage("iterator")
 
 const (
 	SendTextCmd                  = "send_text"
@@ -30,30 +34,32 @@ type Command struct {
 }
 
 type ForeachArgs struct {
-	Function string
-	Values   []interface{}
+	Function string        `mapstructure:"function"`
+	Values   []interface{} `mapstructure:"values"`
 }
 
 type Button struct {
-	Text    string
-	Handler string
-	Intents []string
+	Text    string   `mapstructure:"text"`
+	Handler string   `mapstructure:"handler"`
+	Intents []string `mapstructure:"intents"`
 }
 
 type Iterator struct {
 	messenger  messenger.Messenger
-	req        *Request
+	req        *core.Request
 	initScript []*Command
+	logger     *log.Entry
 }
 
-func NewIterator(req *Request, script []*Command, messenger messenger.Messenger) *Iterator {
-	return &Iterator{req: req, messenger: messenger, initScript: script}
+func New(req *core.Request, script []*Command, messenger messenger.Messenger) *Iterator {
+	logger := logging.FromContextAndBase(req.Ctx, gLogger)
+	return &Iterator{req: req, messenger: messenger, initScript: script, logger: logger}
 }
 
 func parseButtonsArg(buttonsData interface{}) ([]*Button, error) {
-	buttonsArray, ok := buttonsData.([]map[string]interface{})
+	buttonsArray, ok := buttonsData.([]interface{})
 	if !ok {
-		return nil, errors.Errorf("expected array of json objects, not %v", buttonsData)
+		return nil, errors.Errorf("expected array, not %v", buttonsData)
 	}
 	buttons := make([]*Button, len(buttonsArray))
 	for i, buttonData := range buttonsArray {
@@ -92,7 +98,7 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	messengerButtons := make([]*messenger.Button, len(buttons))
 	for i, button := range buttons {
 		messengerButtons[i] = &messenger.Button{button.Text, button.Handler}
-		iter.req.Session.AddIntent(&Intent{Words: button.Intents, Handler: button.Handler})
+		iter.req.Session.AddIntent(&core.Intent{Words: button.Intents, Handler: button.Handler})
 	}
 	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
 	return errors.Wrap(err, "messenger send text with buttons")
@@ -208,13 +214,12 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		SendAttachmentCmd:            iter.sendAttachment,
 		SetInputHandlerCmd:           iter.setInputHandler,
 	}
-	logger := logging.FromContextAndBase(iter.req.Ctx, gLogger)
-	for i, cmd := range resultScript {
+	for _, cmd := range resultScript {
 		cmdHandler, ok := commandsMapping[cmd.Name]
 		if !ok {
 			return errors.Errorf("unknown command %s", cmd.Name)
 		}
-		logger.WithFields(log.Fields{"command": cmd.Name, "args": cmd.Args, "number": i}).Infof("execute command")
+		iter.logger.WithFields(log.Fields{"command": cmd.Name, "args": cmd.Args}).Infof("execute command")
 		err := cmdHandler(cmd.Args)
 		if err != nil {
 			return errors.Wrapf(err, "command %s failed", cmd.Name)

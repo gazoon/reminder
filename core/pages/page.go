@@ -1,4 +1,4 @@
-package core
+package pages
 
 import (
 	"bytes"
@@ -8,6 +8,11 @@ import (
 	"strings"
 	templ "text/template"
 
+	"reminder/core"
+	"reminder/core/iterator"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
@@ -28,13 +33,13 @@ func parseYAML(data []byte, val interface{}) error {
 	return err
 }
 
-type MessageHandler func(req *Request) (string, error)
+type MessageHandler func(req *core.Request) (string, error)
 
 type Page interface {
 	GetName() string
-	GetIntents() []*Intent
+	GetIntents() []*core.Intent
 	GetInputHandler(name string) (MessageHandler, bool)
-	Enter(req *Request, params map[string]interface{}) (string, error)
+	Enter(req *core.Request, params map[string]interface{}) (string, error)
 }
 
 type SequenceItem struct {
@@ -42,23 +47,24 @@ type SequenceItem struct {
 	Value interface{}
 }
 
-type Controller func(req *Request, params map[string]interface{}) (interface{}, error)
+type Controller func(req *core.Request, params map[string]interface{}) (interface{}, error)
 
 type PageStructure struct {
 	Main    []map[string]interface{}            `yaml:"main"`
-	Intents []*Intent                           `yaml:"intents"`
+	Intents []*core.Intent                      `yaml:"intents"`
 	Parts   map[string][]map[string]interface{} `yaml:"parts"`
 	Config  map[string]interface{}              `yaml:"config"`
 }
 
 type BasePage struct {
+	*logging.GlobalLogger
 	Name          string
 	messenger     messenger.Messenger
 	Controller    Controller
 	InputHandlers map[string]MessageHandler
 
 	ParsedPage *PageStructure
-	Intents    []*Intent
+	Intents    []*core.Intent
 	OtherParts map[string][]*SequenceItem
 	MainPart   []*SequenceItem
 }
@@ -84,8 +90,9 @@ func newBasePage(name string, inputHandlers map[string]MessageHandler, controlle
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot retrieve other parts")
 	}
+	logger := logging.NewGlobalLogger("pages", log.Fields{"page": name})
 	page := &BasePage{Name: name, messenger: messenger, Controller: controller, InputHandlers: inputHandlers,
-		ParsedPage: parsedPage, Intents: parsedPage.Intents, MainPart: mainPart, OtherParts: otherParts}
+		ParsedPage: parsedPage, Intents: parsedPage.Intents, MainPart: mainPart, OtherParts: otherParts, GlobalLogger: logger}
 	return page, nil
 }
 
@@ -122,7 +129,7 @@ func iterationPartToSequence(iterationPart []map[string]interface{}) ([]*Sequenc
 	return sequence, nil
 }
 
-func (bp *BasePage) Enter(req *Request, params map[string]interface{}) (string, error) {
+func (bp *BasePage) Enter(req *core.Request, params map[string]interface{}) (string, error) {
 	var scriptData interface{}
 	if bp.Controller != nil {
 		var err error
@@ -139,7 +146,7 @@ func (bp *BasePage) GetName() string {
 	return bp.Name
 }
 
-func (bp *BasePage) GetIntents() []*Intent {
+func (bp *BasePage) GetIntents() []*core.Intent {
 	return bp.Intents
 }
 
@@ -156,16 +163,16 @@ func (bp *BasePage) partNames() []string {
 	return names
 }
 
-func (bp *BasePage) renderResponse(req *Request, data interface{}) (string, error) {
+func (bp *BasePage) renderResponse(req *core.Request, data interface{}) (string, error) {
 	nextPart := bp.MainPart
-	var script []*Command
+	var script []*iterator.Command
 	var redirectURI string
 	for nextPart != nil {
 		currentPart := nextPart
 		nextPart = nil
 		for _, item := range currentPart {
 			var err error
-			cmd := &Command{Name: item.Key}
+			cmd := &iterator.Command{Name: item.Key}
 			cmd.Args, err = evaluateArgs(item.Value, data)
 			if err != nil {
 				return "", errors.Wrapf(err, "args evaluation failed, args=%v data=%v command=%s", item.Value, data, cmd.Name)
@@ -206,11 +213,13 @@ func (bp *BasePage) renderResponse(req *Request, data interface{}) (string, erro
 	return redirectURI, nil
 }
 
-func (bp *BasePage) executeScript(req *Request, script []*Command) error {
+func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command) error {
 	if len(script) == 0 {
 		return nil
 	}
-	iter := NewIterator(req, script, bp.messenger)
+	logger := logging.FromContext(req.Ctx)
+	req.Ctx = logging.NewContext(req.Ctx, logger.WithField("iteration_page", bp.Name))
+	iter := iterator.New(req, script, bp.messenger)
 	err := iter.Run()
 	return errors.Wrap(err, "script iteration falied")
 }
@@ -317,10 +326,10 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 	lookupFields := strings.Split(dataKey, ".")
 	var value interface{} = scriptData
 	for _, field := range lookupFields {
-		if index, err := strconv.Atoi(field); err != nil {
+		if index, err := strconv.Atoi(field); err == nil {
 			array, ok := value.([]interface{})
 			if !ok {
-				return nil, errors.Errorf("%v not an array, lookup index=%s", value, index)
+				return nil, errors.Errorf("%v not an array, lookup index=%d", value, index)
 			}
 			if index < 0 || index >= len(array) {
 				return nil, errors.Errorf("index %s out of range %v", index, value)
@@ -351,12 +360,16 @@ type ReminderListPage struct {
 	PreviewTemplate string
 }
 
-func (rl *ReminderListPage) getOrDeleteInputHandler(req *Request) (string, error) {
+func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (string, error) {
 	return "", nil
 }
 
-func (rl *ReminderListPage) controller(req *Request, params map[string]interface{}) (interface{}, error) {
-	return nil, nil
+func (rl *ReminderListPage) controller(req *core.Request, params map[string]interface{}) (interface{}, error) {
+	data := map[string]interface{}{
+		"has_reminders":     true,
+		"reminder_previews": []string{"foo", "bbbbbb", "222"},
+	}
+	return data, nil
 }
 
 func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, error) {
