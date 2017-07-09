@@ -7,5 +7,5 @@ main:
 #      function: send_attachment
 #      values: $reminderAttachments
   - send_buttons:
-      - { text: "All reminders", handler: "page://list",intents:["list","show","catalog"] }
+    - { text: "All reminders", handler: "page://list",intents:["list","show","catalog"] }
 

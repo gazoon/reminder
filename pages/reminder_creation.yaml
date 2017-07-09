@@ -1,13 +1,13 @@
 main:
   - goto:
-      - if: {{eq .State "title"}}
-        then: enter_title
-      - if: {{eq .State "date"}}
-        then: enter_date
-      - if: {{eq .State "description"}}
-        then: enter_description
-      - if: {{eq .State "attachment"}}
-        then: add_attachment
+    - if: {{eq .State "title"}}
+      then: enter_title
+    - if: {{eq .State "date"}}
+      then: enter_date
+    - if: {{eq .State "description"}}
+      then: enter_description
+    - if: {{eq .State "attachment"}}
+      then: add_attachment
 
 parts:
   enter_title:
@@ -37,7 +37,7 @@ parts:
         "Problems with description: {{.ErrorMsg}}. Type again."
         {{end}}
     - send_buttons:
-        - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
+      - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
 
   add_attachment:
     - send_text:
@@ -47,7 +47,7 @@ parts:
         "Problems with attachment: {{.ErrorMsg}}. Upload again."
         {{end}}
     - send_buttons:
-        - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
+      - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
 
 intents:
   - words: ["cancel","close","exit","escape"]

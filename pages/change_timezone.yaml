@@ -18,7 +18,7 @@ parts:
   timezone_changed:
     - send_text: "Timezone changed"
     - send_buttons:
-        - { text: "Home", handler: "page://home",intents:["home","root","main"] }
+      - { text: "Home", handler: "page://home",intents:["home","root","main"] }
 
 
 
