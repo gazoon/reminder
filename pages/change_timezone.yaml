@@ -1,6 +1,6 @@
 main:
   - goto:
-      if: {{.Changed}}
+      if: {{.changed}}
       then: timezone_changed
 
   - set_input_handler:
@@ -8,7 +8,7 @@ main:
       next: "page://timezone/?changed=true"
 
   - send_text:
-      {{ if eq .ErrorMsg ""}}
+      {{ if eq .error_msg ""}}
       "Type your timezone (e.g. -3 or +2):"
       {{else}}
       "Problems with timezone: {{.ErrorMsg}}. Type again:"

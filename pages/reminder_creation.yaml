@@ -1,19 +1,16 @@
 main:
   - goto:
-    - if: {{eq .State "title"}}
-      then: enter_title
-    - if: {{eq .State "date"}}
-      then: enter_date
-    - if: {{eq .State "description"}}
-      then: enter_description
-    - if: {{eq .State "attachment"}}
-      then: add_attachment
+      cond:
+        - { if: '{{eq .part "title"}}', then: enter_title }
+        - { if: '{{eq .part "date"}}', then: enter_date }
+        - { if: '{{eq .part "description"}}', then: enter_description }
+        - { if: '{{eq .part "attachment"}}', then: add_attachment }
 
 parts:
   enter_title:
     - set_input_handler: "on_title"
     - send_text:
-        {{if eq .ErrorMsg ""}}
+        {{if eq .error_msg ""}}
         "Enter title."
         {{else}}
         "Problems with title: {{.ErrorMsg}}. Type again."
@@ -22,7 +19,7 @@ parts:
   enter_date:
     - set_input_handler: "on_date"
     - send_text:
-        {{if eq .ErrorMsg ""}}
+        {{if eq .error_msg ""}}
         "Enter date."
         {{else}}
         "Problems with date: {{.ErrorMsg}}. Type again."
@@ -31,7 +28,7 @@ parts:
   enter_description:
     - set_input_handler: "on_description"
     - send_text:
-        {{if eq .ErrorMsg ""}}
+        {{if eq .error_msg ""}}
         "Enter Description (optional)."
         {{else}}
         "Problems with description: {{.ErrorMsg}}. Type again."
@@ -41,7 +38,7 @@ parts:
 
   add_attachment:
     - send_text:
-        {{if eq .ErrorMsg ""}}
+        {{if eq .error_msg ""}}
         "Upload attachment (optional)."
         {{else}}
         "Problems with attachment: {{.ErrorMsg}}. Upload again."

@@ -11,6 +11,7 @@ import (
 	"reminder/core"
 	"reminder/core/iterator"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -306,6 +307,7 @@ func evaluateConditionalValue(data map[string]interface{}) (interface{}, error) 
 	if !ok {
 		return nil, errors.Errorf("cond arg must be an array: %v", condArg)
 	}
+	fmt.Println(data)
 	for _, item := range ifsArray {
 		ifData, ok := item.(map[string]interface{})
 		if !ok {
@@ -332,7 +334,7 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 				return nil, errors.Errorf("%v not an array, lookup index=%d", value, index)
 			}
 			if index < 0 || index >= len(array) {
-				return nil, errors.Errorf("index %s out of range %v", index, value)
+				return nil, errors.Errorf("index %d out of range %v", index, value)
 			}
 			value = array[index]
 
@@ -344,7 +346,7 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 			}
 			value, ok = obj[key]
 			if !ok {
-				return nil, errors.Errorf("key %s not found in %v", key, value)
+				return nil, errors.Errorf("key %s not found in %v", key, obj)
 			}
 		}
 	}
@@ -367,8 +369,10 @@ func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (string, 
 func (rl *ReminderListPage) controller(req *core.Request, params map[string]interface{}) (interface{}, error) {
 	data := map[string]interface{}{
 		"has_reminders":     true,
-		"reminder_previews": []string{"foo", "bbbbbb", "222"},
+		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
+		"foo":               map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
 	}
+
 	return data, nil
 }
 

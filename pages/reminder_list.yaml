@@ -8,6 +8,9 @@ parts:
     - foreach:
         function: send_text
         values: $reminder_previews
+    - send_text:
+        cond:
+          - { if: "t" }
     - set_input_handler: "on_get_or_delete"
     - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
 
