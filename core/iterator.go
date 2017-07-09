@@ -46,6 +46,10 @@ type Iterator struct {
 	initScript []*Command
 }
 
+func NewIterator(req *Request, script []*Command, messenger messenger.Messenger) *Iterator {
+	return &Iterator{req: req, messenger: messenger, initScript: script}
+}
+
 func parseButtonsArg(buttonsData interface{}) ([]*Button, error) {
 	buttonsArray, ok := buttonsData.([]map[string]interface{})
 	if !ok {

@@ -1,8 +1,12 @@
 main:
   - goto:
-      - if: {{ .HasReminders }}
-        then: has_reminders
-      - no_reminders
+      cond:
+      - if: {{.HasReminders}}
+        then: has_reminder
+        else:
+      if: {{ .HasReminders }}
+      then: has_reminders
+      else: no_reminders
 
 
 parts:

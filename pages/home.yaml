@@ -1,5 +1,5 @@
 main:
-  - send_text: "What do you want to do?"
+  - send_text: "Hi, {{ .Name }}! What do you want to do?"
   - send_buttons:
       - { text: "Create", handler: "page://creation",intents:["create","new","add"] }
       - { text: "List", handler: "page://list",intents:["list","show","catalog"] }
