@@ -11,7 +11,6 @@ import (
 	"reminder/core"
 	"reminder/core/iterator"
 
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -172,11 +171,14 @@ func (bp *BasePage) renderResponse(req *core.Request, data interface{}) (string,
 		currentPart := nextPart
 		nextPart = nil
 		for _, item := range currentPart {
-			var err error
 			cmd := &iterator.Command{Name: item.Key}
-			cmd.Args, err = evaluateArgs(item.Value, data)
+			evaluated, err := evaluateArgs(item.Value, data)
 			if err != nil {
 				return "", errors.Wrapf(err, "args evaluation failed, args=%v data=%v command=%s", item.Value, data, cmd.Name)
+			}
+			cmd.Args, err = computeConditionalStmts(evaluated)
+			if err != nil {
+				return "", errors.Wrapf(err, "cannot compute cond statements, args=%v command=%s", evaluated, cmd.Name)
 			}
 			if cmd.Name == "goto" {
 				if cmd.Args == nil {
@@ -262,15 +264,56 @@ func evaluateArgs(args interface{}, scriptData interface{}) (interface{}, error)
 				return nil, err
 			}
 		}
-		var err error
-		evaluatedValue, err = evaluateConditionalValue(evaluatedObject)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot evaluate cond value")
-		}
+		evaluatedValue = evaluatedObject
 	} else {
 		evaluatedValue = args
 	}
 	return evaluatedValue, nil
+}
+
+func computeConditionalStmts(args interface{}) (interface{}, error) {
+	if arrayArg, ok := args.([]interface{}); ok {
+		computedArray := make([]interface{}, len(arrayArg))
+		for i, args := range arrayArg {
+			var err error
+			computedArray[i], err = computeConditionalStmts(args)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return computedArray, nil
+	}
+	if objectArg, ok := args.(map[string]interface{}); ok {
+		condArg, ok := objectArg["cond"]
+		var value interface{}
+		if ok {
+			if len(objectArg) > 1 {
+				return nil, errors.Errorf("the cond must be the only one field in the object %v", objectArg)
+			}
+			var err error
+			value, err = condStatement(condArg)
+			if err != nil {
+				return nil, errors.Wrapf(err, "invalid cond stmt %v", condArg)
+			}
+		} else {
+			var err error
+			value, err = ifStatement(objectArg)
+			if err != nil {
+				computedObject := make(map[string]interface{}, len(objectArg))
+				for key, args := range objectArg {
+					var err error
+					computedObject[key], err = computeConditionalStmts(args)
+					if err != nil {
+						return nil, err
+					}
+				}
+				return computedObject, nil
+			}
+		}
+		return computeConditionalStmts(value)
+	}
+	return args, nil
+
 }
 
 func ifStatement(item map[string]interface{}) (interface{}, error) {
@@ -294,20 +337,11 @@ func ifStatement(item map[string]interface{}) (interface{}, error) {
 	}
 }
 
-func evaluateConditionalValue(data map[string]interface{}) (interface{}, error) {
-	value, err := ifStatement(data)
-	if err == nil {
-		return value, nil
-	}
-	condArg := data["cond"]
-	if condArg == nil {
-		return data, nil
-	}
-	ifsArray, ok := condArg.([]interface{})
+func condStatement(data interface{}) (interface{}, error) {
+	ifsArray, ok := data.([]interface{})
 	if !ok {
-		return nil, errors.Errorf("cond arg must be an array: %v", condArg)
+		return nil, errors.Errorf("cond arg must be an array: %v", data)
 	}
-	fmt.Println(data)
 	for _, item := range ifsArray {
 		ifData, ok := item.(map[string]interface{})
 		if !ok {
