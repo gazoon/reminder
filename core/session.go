@@ -23,6 +23,8 @@ type Session struct {
 	LocalIntents    []*Intent
 	InputHandler    string
 	ChatID          int
+	PagesStates     map[string]map[string]interface{}
+	GlobalState     map[string]interface{}
 }
 
 func (s *Session) AddIntent(intent *Intent) {

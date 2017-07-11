@@ -1,1 +1,3 @@
 4. add response type
+5. multi handler pages
+6. relative urls

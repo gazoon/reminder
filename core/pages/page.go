@@ -163,6 +163,26 @@ func (bp *BasePage) partNames() []string {
 	return names
 }
 
+func (bp *BasePage) getState(req *core.Request) map[string]interface{} {
+	return req.Session.PagesStates[bp.Name]
+}
+
+func (bp *BasePage) updateState(req *core.Request, key string, value interface{}) {
+	state, ok := req.Session.PagesStates[bp.Name]
+	if !ok {
+		state = make(map[string]interface{})
+	}
+	state[key] = value
+}
+
+func (bp *BasePage) clearState(req *core.Request) {
+	delete(req.Session.PagesStates, bp.Name)
+}
+
+func (bp *BasePage) setState(req *core.Request, state map[string]interface{}) {
+	req.Session.PagesStates[bp.Name] = state
+}
+
 func (bp *BasePage) renderResponse(req *core.Request, data interface{}) (string, error) {
 	nextPart := bp.MainPart
 	var script []*iterator.Command
