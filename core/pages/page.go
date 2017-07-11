@@ -220,8 +220,7 @@ func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command)
 	if len(script) == 0 {
 		return nil
 	}
-	logger := logging.FromContext(req.Ctx)
-	req.Ctx = logging.NewContext(req.Ctx, logger.WithField("iteration_page", bp.Name))
+	req.Ctx = iterator.NewCtxWithPageName(req.Ctx, bp.Name)
 	iter := iterator.New(req, script, bp.messenger)
 	err := iter.Run()
 	return errors.Wrap(err, "script iteration falied")

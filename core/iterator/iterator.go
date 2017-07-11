@@ -3,6 +3,7 @@ package iterator
 import (
 	"reminder/core"
 
+	"context"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -11,6 +12,8 @@ import (
 )
 
 var gLogger = logging.WithPackage("iterator")
+
+type ctxKey int
 
 const (
 	SendTextCmd                  = "send_text"
@@ -21,6 +24,7 @@ const (
 
 	SendButtonsCmd = "send_buttons"
 	ForeachCmd     = "foreach"
+	pageNameCtxKey = ctxKey(1)
 )
 
 var foreachShortcuts = map[string]string{
@@ -51,8 +55,16 @@ type Iterator struct {
 	logger     *log.Entry
 }
 
+func NewCtxWithPageName(ctx context.Context, pageName string) context.Context {
+	return context.WithValue(ctx, pageNameCtxKey, pageName)
+}
+
 func New(req *core.Request, script []*Command, messenger messenger.Messenger) *Iterator {
 	logger := logging.FromContextAndBase(req.Ctx, gLogger)
+	pageName := req.Ctx.Value(pageNameCtxKey)
+	if pageName != nil {
+		logger = logger.WithField("iteration_page", pageName)
+	}
 	return &Iterator{req: req, messenger: messenger, initScript: script, logger: logger}
 }
 

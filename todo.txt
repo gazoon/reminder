@@ -1,3 +1,1 @@
-2. iterator context
-3. complete manual tests
 4. add response type
