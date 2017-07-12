@@ -1,21 +1,18 @@
-main:
-  - goto:
-      if: {{.changed}}
-      then: timezone_changed
 
-  - set_input_handler:
-      handler: "on_timezone"
-      next: "page://timezone/?changed=true"
+actions:
+  main:
+    - set_input_handler:
+        handler: "on_timezone"
+        next: "page://timezone/changed"
 
-  - send_text:
-      {{ if eq .error_msg ""}}
-      "Type your timezone (e.g. -3 or +2):"
-      {{else}}
-      "Problems with timezone: {{.ErrorMsg}}. Type again:"
-      {{end}}
+    - send_text:
+        {{ if eq .error_msg ""}}
+        "Type your timezone (e.g. -3 or +2):"
+        {{else}}
+        "Problems with timezone: {{.ErrorMsg}}. Type again:"
+        {{end}}
 
-parts:
-  timezone_changed:
+  changed:
     - send_text: "Timezone changed"
     - send_buttons:
       - { text: "Home", handler: "page://home",intents:["home","root","main"] }

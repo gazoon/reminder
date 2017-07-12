@@ -1,10 +1,11 @@
-main:
-  - send_text: {{.title}}
-  - send_text: "Remind at {{.date}}"
-  - send_text: {{.description}}
-  - for_each:
-      function: send_attachment
-      values: $reminder_attachments
-  - send_buttons:
-    - { text: "All reminders", handler: "page://list", intents: ["list","show","catalog"] }
+actions:
+  main:
+    - send_text: {{.title}}
+    - send_text: "Remind at {{.date}}"
+    - send_text: {{.description}}
+    - for_each:
+        function: send_attachment
+        values: $reminder_attachments
+    - send_buttons:
+      - { text: "All reminders", handler: "page://reminder_list", intents: ["list","show","catalog"] }
 

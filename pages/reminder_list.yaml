@@ -1,25 +1,19 @@
-main:
-  - goto: { if: "{{ .has_reminders }}", then: has_reminders,  else: no_reminders }
+actions:
+  maiin:
+    - goto: { if: "{{ .has_reminders }}", then: has_reminders,  else: no_reminders }
 
-
-parts:
   has_reminders:
     - send_text: "List of your reminders:"
     - foreach:
         function: send_text
         values: $reminder_previews
     - set_input_handler: "on_get_or_delete"
-    - send_text: "Type: {reminder_number} delete or show\nTo delete or show details of particular reminder."
+    - send_text: "Type: {reminder_number} delete or {{ .foo }} show\nTo delete or show details of particular reminder."
 
   no_reminders:
-    - send_text: "You don't have any reminders yet. You could create one."
+    - send_text: "You don't have any reminders yet. You {{ .foo }} could create one."
     - send_buttons:
-      - { text: "Create", handler: "page://creation", intents: ["create","new","add"] }
-
-
-intents:
-  - words: ["cancel","close","exit","escape"]
-    handler: "page://finish_creation?cancel=true"
+      - { text: "Create", handler: "page://reminder_creation", intents: ["create","new","add"] }
 
 
 config:

@@ -1,4 +1,5 @@
-main:
-  - send_text: "I don't understand you, sorry."
-  - send_buttons:
-    - { text: "Home", handler: "page://home", intents:["home","root","main"] }
+actions:
+  main:
+    - send_text: "I don't understand you, sorry."
+    - send_buttons:
+      - { text: "Home", handler: "page://home", intents:["home","root","main"] }

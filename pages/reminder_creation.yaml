@@ -1,12 +1,12 @@
-main:
-  - goto:
-      cond:
-        - { if: '{{eq .part "title"}}', then: enter_title }
-        - { if: '{{eq .part "date"}}', then: enter_date }
-        - { if: '{{eq .part "description"}}', then: enter_description }
-        - { if: '{{eq .part "attachment"}}', then: add_attachment }
+actions:
+  main:
+    - goto:
+        cond:
+          - { if: '{{eq .part "title"}}', then: enter_title }
+          - { if: '{{eq .part "date"}}', then: enter_date }
+          - { if: '{{eq .part "description"}}', then: enter_description }
+          - { if: '{{eq .part "attachment"}}', then: add_attachment }
 
-parts:
   enter_title:
     - set_input_handler: "on_title"
     - send_text:
@@ -34,7 +34,7 @@ parts:
         "Problems with description: {{.ErrorMsg}}. Type again."
         {{end}}
     - send_buttons:
-      - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
+      - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
 
   add_attachment:
     - send_text:
@@ -44,8 +44,13 @@ parts:
         "Problems with attachment: {{.ErrorMsg}}. Upload again."
         {{end}}
     - send_buttons:
-      - { text: "Done", handler: "page://finish_creation", intents: ["done","ready","finish"] }
+      - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
+  done:
+    - redirect: "page://finish_reminder_creation"
+
+  cancel:
+    - redirect: "page://home"
 
 intents:
   - words: ["cancel","close","exit","escape"]
-    handler: "page://finish_creation?cancel=true"
+    handler: "page://reminder_creation/cancel"

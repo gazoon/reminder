@@ -22,6 +22,8 @@ const (
 	fileExtension    = ".yaml"
 	pagesFolder      = "pages"
 	evaluationMarker = "$"
+
+	mainAction = "main"
 )
 
 var (
@@ -39,7 +41,7 @@ type Page interface {
 	GetName() string
 	GetIntents() []*core.Intent
 	GetInputHandler(name string) (MessageHandler, bool)
-	Enter(req *core.Request, params map[string]interface{}) (string, error)
+	Enter(req *core.Request, action string, params map[string]interface{}) (string, error)
 }
 
 type SequenceItem struct {
@@ -52,25 +54,25 @@ type Controller func(req *core.Request, params map[string]interface{}) (interfac
 type PageStructure struct {
 	Main    []map[string]interface{}            `yaml:"main"`
 	Intents []*core.Intent                      `yaml:"intents"`
-	Parts   map[string][]map[string]interface{} `yaml:"parts"`
+	Actions map[string][]map[string]interface{} `yaml:"actions"`
 	Config  map[string]interface{}              `yaml:"config"`
 }
 
 type BasePage struct {
 	*logging.GlobalLogger
-	Name          string
-	messenger     messenger.Messenger
-	Controller    Controller
-	InputHandlers map[string]MessageHandler
+	Name      string
+	messenger messenger.Messenger
 
-	ParsedPage *PageStructure
-	Intents    []*core.Intent
-	OtherParts map[string][]*SequenceItem
-	MainPart   []*SequenceItem
+	actionControllers map[string]Controller
+	InputHandlers     map[string]MessageHandler
+
+	ParsedPage  *PageStructure
+	Intents     []*core.Intent
+	actionViews map[string][]*SequenceItem
 }
 
-func newBasePage(name string, inputHandlers map[string]MessageHandler, controller Controller,
-	messenger messenger.Messenger) (*BasePage, error) {
+func newBasePage(name string, mainController Controller, otherActionControllers map[string]Controller,
+	inputHandlers map[string]MessageHandler, messenger messenger.Messenger) (*BasePage, error) {
 
 	filePath := path.Join(pagesFolder, name+fileExtension)
 	fileContent, err := ioutil.ReadFile(filePath)
@@ -82,34 +84,39 @@ func newBasePage(name string, inputHandlers map[string]MessageHandler, controlle
 	if err != nil {
 		return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
 	}
-	mainPart, err := retrieveMainPart(parsedPage)
+	actions, err := retrieveActions(parsedPage)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot build main part")
+		return nil, errors.Wrap(err, "cannot retrieve actions")
 	}
-	otherParts, err := retrieveOtherParts(parsedPage)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot retrieve other parts")
+	if _, ok := actions[mainAction]; !ok {
+		return nil, errors.Errorf("actions doesn't contain the main %v", actions)
 	}
 	logger := logging.NewGlobalLogger("pages", log.Fields{"page": name})
-	page := &BasePage{Name: name, messenger: messenger, Controller: controller, InputHandlers: inputHandlers,
-		ParsedPage: parsedPage, Intents: parsedPage.Intents, MainPart: mainPart, OtherParts: otherParts, GlobalLogger: logger}
+
+	actionControllers := make(map[string]Controller, len(otherActionControllers)+1)
+	for k, v := range otherActionControllers {
+		actionControllers[k] = v
+	}
+	if mainController != nil {
+		actionControllers[mainAction] = mainController
+	}
+
+	page := &BasePage{
+		Name: name, messenger: messenger, actionControllers: actionControllers, InputHandlers: inputHandlers,
+		ParsedPage: parsedPage, Intents: parsedPage.Intents, actionViews: actions, GlobalLogger: logger}
 	return page, nil
 }
 
-func retrieveMainPart(parsedPage *PageStructure) ([]*SequenceItem, error) {
-	return iterationPartToSequence(parsedPage.Main)
-}
-
-func retrieveOtherParts(parsedPage *PageStructure) (map[string][]*SequenceItem, error) {
-	parts := make(map[string][]*SequenceItem, len(parsedPage.Parts))
-	for partName, partData := range parsedPage.Parts {
-		seq, err := iterationPartToSequence(partData)
+func retrieveActions(parsedPage *PageStructure) (map[string][]*SequenceItem, error) {
+	actions := make(map[string][]*SequenceItem, len(parsedPage.Actions))
+	for actionName, actionData := range parsedPage.Actions {
+		seq, err := iterationPartToSequence(actionData)
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot transform part %s to sequence", partName)
+			return nil, errors.Wrapf(err, "cannot transform action %s to sequence", actionName)
 		}
-		parts[partName] = seq
+		actions[actionName] = seq
 	}
-	return parts, nil
+	return actions, nil
 }
 
 func iterationPartToSequence(iterationPart []map[string]interface{}) ([]*SequenceItem, error) {
@@ -129,16 +136,19 @@ func iterationPartToSequence(iterationPart []map[string]interface{}) ([]*Sequenc
 	return sequence, nil
 }
 
-func (bp *BasePage) Enter(req *core.Request, params map[string]interface{}) (string, error) {
+func (bp *BasePage) Enter(req *core.Request, action string, params map[string]interface{}) (string, error) {
 	var scriptData interface{}
-	if bp.Controller != nil {
+	if action == "" {
+		action = mainAction
+	}
+	if controller, ok := bp.actionControllers[action]; ok {
 		var err error
-		scriptData, err = bp.Controller(req, params)
+		scriptData, err = controller(req, params)
 		if err != nil {
-			return "", errors.Wrap(err, "controller failed")
+			return "", errors.Wrapf(err, "controller %s failed", action)
 		}
 	}
-	redirectURI, err := bp.renderResponse(req, scriptData)
+	redirectURI, err := bp.renderResponse(req, action, scriptData)
 	return redirectURI, errors.Wrap(err, "response failed")
 }
 
@@ -155,9 +165,9 @@ func (bp *BasePage) GetInputHandler(name string) (MessageHandler, bool) {
 	return handler, ok
 }
 
-func (bp *BasePage) partNames() []string {
-	names := make([]string, 0, len(bp.OtherParts))
-	for k := range bp.OtherParts {
+func (bp *BasePage) actionNames() []string {
+	names := make([]string, 0, len(bp.actionViews))
+	for k := range bp.actionViews {
 		names = append(names, k)
 	}
 	return names
@@ -183,14 +193,18 @@ func (bp *BasePage) setState(req *core.Request, state map[string]interface{}) {
 	req.Session.PagesStates[bp.Name] = state
 }
 
-func (bp *BasePage) renderResponse(req *core.Request, data interface{}) (string, error) {
-	nextPart := bp.MainPart
+func (bp *BasePage) renderResponse(req *core.Request, actionName string, data interface{}) (string, error) {
+	nextAction, ok := bp.actionViews[actionName]
+	if !ok {
+		return "", errors.Errorf("action %s not found in %v", actionName, bp.actionNames())
+	}
+	visitedActions := map[string]bool{actionName: true}
 	var script []*iterator.Command
 	var redirectURI string
-	for nextPart != nil {
-		currentPart := nextPart
-		nextPart = nil
-		for _, item := range currentPart {
+	for nextAction != nil {
+		currentAction := nextAction
+		nextAction = nil
+		for _, item := range currentAction {
 			cmd := &iterator.Command{Name: item.Key}
 			evaluated, err := evaluateArgs(item.Value, data)
 			if err != nil {
@@ -204,13 +218,17 @@ func (bp *BasePage) renderResponse(req *core.Request, data interface{}) (string,
 				if cmd.Args == nil {
 					continue
 				}
-				partName, ok := cmd.Args.(string)
+				actionName, ok := cmd.Args.(string)
 				if !ok {
 					return "", errors.Errorf("goto argument must be a string, not %v", cmd.Args)
 				}
-				nextPart, ok = bp.OtherParts[partName]
+				if isVisited := visitedActions[actionName]; isVisited {
+					return "", errors.Errorf("actions cycle, already visited action %s", actionName)
+				}
+				visitedActions[actionName] = true
+				nextAction, ok = bp.actionViews[actionName]
 				if !ok {
-					return "", errors.Errorf("goto to unexisting page part %s, parts=%v", partName, bp.partNames())
+					return "", errors.Errorf("goto to unexisting page action %s, actions=%v", actionName, bp.actionNames())
 				}
 				break
 			} else if cmd.Name == "redirect" {
@@ -407,7 +425,7 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 }
 
 func NewHomePage(messenger messenger.Messenger) (*BasePage, error) {
-	return newBasePage("home", nil, nil, messenger)
+	return newBasePage("home", nil, nil, nil, messenger)
 }
 
 type ReminderListPage struct {
@@ -419,13 +437,25 @@ func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (string, 
 	return "", nil
 }
 
-func (rl *ReminderListPage) controller(req *core.Request, params map[string]interface{}) (interface{}, error) {
+func (rl *ReminderListPage) mainController(req *core.Request, params map[string]interface{}) (interface{}, error) {
 	data := map[string]interface{}{
 		"has_reminders":     true,
 		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
 		"foo":               map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
 	}
+	return data, nil
+}
 
+func (rl *ReminderListPage) fooController(req *core.Request, params map[string]interface{}) (interface{}, error) {
+	data := map[string]interface{}{
+		"foo": "foo",
+	}
+	return data, nil
+}
+func (rl *ReminderListPage) barController(req *core.Request, params map[string]interface{}) (interface{}, error) {
+	data := map[string]interface{}{
+		"foo": "bar",
+	}
 	return data, nil
 }
 
@@ -434,7 +464,11 @@ func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, erro
 	inputs := map[string]MessageHandler{
 		"on_get_or_delete": page.getOrDeleteInputHandler,
 	}
-	basePage, err := newBasePage("reminder_list", inputs, page.controller, messenger)
+	controllers := map[string]Controller{
+		"has_reminders": page.fooController,
+		"no_reminders":  page.barController,
+	}
+	basePage, err := newBasePage("reminder_list", page.mainController, controllers, inputs, messenger)
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,5 @@
-main:
-  - goto: { if: "{{.cancellation}}", then: cancel }
-  - send_text: "Reminder successfully created."
-  - send_buttons:
-    - { text: "Home", handler: "page://home", intents:["home","root","main"] }
-parts:
-  cancel:
-    - redirect: "page://home"
+actions:
+  main:
+    - send_text: "Reminder successfully created."
+    - send_buttons:
+      - { text: "Home", handler: "page://home", intents:["home","root","main"] }

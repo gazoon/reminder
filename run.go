@@ -31,6 +31,6 @@ func main() {
 	msg := &msgsqueue.Message{Chat: &msgsqueue.Chat{ID: 231193206}}
 	chat := &models.Chat{Chat: *msg.Chat}
 	req := &core.Request{Ctx: logging.NewContext(context.Background(), log.WithField("fooo", "bar")), Msg: msg, Chat: chat, Session: session}
-	uri, err := listPage.Enter(req, nil)
+	uri, err := listPage.Enter(req, "", nil)
 	fmt.Println(uri, err)
 }

@@ -16,6 +16,7 @@ type Request struct {
 	Ctx     context.Context
 	Msg     *msgsqueue.Message
 	Chat    *models.Chat
+	User *models.User
 }
 
 type Session struct {
