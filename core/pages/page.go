@@ -49,20 +49,19 @@ type SequenceItem struct {
 	Value interface{}
 }
 
-type Controller func(req *core.Request, params map[string]interface{}) (interface{}, error)
+type Controller func(req *core.Request, params map[string]interface{}) (map[string]interface{}, error)
 
 type PageStructure struct {
-	Main    []map[string]interface{}            `yaml:"main"`
 	Intents []*core.Intent                      `yaml:"intents"`
 	Actions map[string][]map[string]interface{} `yaml:"actions"`
 	Config  map[string]interface{}              `yaml:"config"`
 }
 
 type BasePage struct {
-	*logging.GlobalLogger
-	Name      string
-	messenger messenger.Messenger
-
+	*logging.ObjectLogger
+	Name              string
+	messenger         messenger.Messenger
+	globalController  Controller
 	actionControllers map[string]Controller
 	InputHandlers     map[string]MessageHandler
 
@@ -71,7 +70,7 @@ type BasePage struct {
 	actionViews map[string][]*SequenceItem
 }
 
-func newBasePage(name string, mainController Controller, otherActionControllers map[string]Controller,
+func newBasePage(name string, globalController Controller, actionControllers map[string]Controller,
 	inputHandlers map[string]MessageHandler, messenger messenger.Messenger) (*BasePage, error) {
 
 	filePath := path.Join(pagesFolder, name+fileExtension)
@@ -91,19 +90,13 @@ func newBasePage(name string, mainController Controller, otherActionControllers 
 	if _, ok := actions[mainAction]; !ok {
 		return nil, errors.Errorf("actions doesn't contain the main %v", actions)
 	}
-	logger := logging.NewGlobalLogger("pages", log.Fields{"page": name})
-
-	actionControllers := make(map[string]Controller, len(otherActionControllers)+1)
-	for k, v := range otherActionControllers {
-		actionControllers[k] = v
-	}
-	if mainController != nil {
-		actionControllers[mainAction] = mainController
-	}
+	logger := logging.NewObjectLogger("pages", log.Fields{"page": name})
 
 	page := &BasePage{
-		Name: name, messenger: messenger, actionControllers: actionControllers, InputHandlers: inputHandlers,
-		ParsedPage: parsedPage, Intents: parsedPage.Intents, actionViews: actions, GlobalLogger: logger}
+		Name: name, messenger: messenger, globalController: globalController, actionControllers: actionControllers,
+		InputHandlers: inputHandlers, ParsedPage: parsedPage, Intents: parsedPage.Intents, actionViews: actions,
+		ObjectLogger: logger,
+	}
 	return page, nil
 }
 
@@ -137,17 +130,27 @@ func iterationPartToSequence(iterationPart []map[string]interface{}) ([]*Sequenc
 }
 
 func (bp *BasePage) Enter(req *core.Request, action string, params map[string]interface{}) (string, error) {
-	var scriptData interface{}
+	var globalData map[string]interface{}
+	if bp.globalController != nil {
+		var err error
+		globalData, err = bp.globalController(req, params)
+		if err != nil {
+			return "", errors.Wrap(err, "page global controller failed")
+		}
+	}
 	if action == "" {
 		action = mainAction
 	}
+	var actionData map[string]interface{}
 	if controller, ok := bp.actionControllers[action]; ok {
 		var err error
-		scriptData, err = controller(req, params)
+		actionData, err = controller(req, params)
 		if err != nil {
 			return "", errors.Wrapf(err, "controller %s failed", action)
 		}
 	}
+	commonData := bp.getCommonScriptData(req, params)
+	scriptData := mergeScriptData(actionData, globalData, commonData)
 	redirectURI, err := bp.renderResponse(req, action, scriptData)
 	return redirectURI, errors.Wrap(err, "response failed")
 }
@@ -193,7 +196,17 @@ func (bp *BasePage) setState(req *core.Request, state map[string]interface{}) {
 	req.Session.PagesStates[bp.Name] = state
 }
 
-func (bp *BasePage) renderResponse(req *core.Request, actionName string, data interface{}) (string, error) {
+func (bp *BasePage) getCommonScriptData(req *core.Request, params map[string]interface{}) map[string]interface{} {
+	data := map[string]interface{}{
+		"message_text": req.Msg.Text,
+		"user":         req.User,
+		"chat":         req.Chat,
+		"params":       params,
+	}
+	return data
+}
+
+func (bp *BasePage) renderResponse(req *core.Request, actionName string, data map[string]interface{}) (string, error) {
 	nextAction, ok := bp.actionViews[actionName]
 	if !ok {
 		return "", errors.Errorf("action %s not found in %v", actionName, bp.actionNames())
@@ -264,7 +277,7 @@ func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command)
 	return errors.Wrap(err, "script iteration falied")
 }
 
-func evaluateArgs(args interface{}, scriptData interface{}) (interface{}, error) {
+func evaluateArgs(args interface{}, scriptData map[string]interface{}) (interface{}, error) {
 	var evaluatedValue interface{}
 	if textArg, ok := args.(string); ok {
 		if strings.HasPrefix(textArg, evaluationMarker) {
@@ -424,6 +437,21 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 	return value, nil
 }
 
+func mergeScriptData(actionData, globalPageData, commonData map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{}, len(actionData)+len(globalPageData)+len(commonData))
+	//		priority common<global<action
+	for k, v := range commonData {
+		result[k] = v
+	}
+	for k, v := range globalPageData {
+		result[k] = v
+	}
+	for k, v := range actionData {
+		result[k] = v
+	}
+	return result
+}
+
 func NewHomePage(messenger messenger.Messenger) (*BasePage, error) {
 	return newBasePage("home", nil, nil, nil, messenger)
 }
@@ -437,24 +465,31 @@ func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (string, 
 	return "", nil
 }
 
-func (rl *ReminderListPage) mainController(req *core.Request, params map[string]interface{}) (interface{}, error) {
+func (rl *ReminderListPage) mainAction(req *core.Request, params map[string]interface{}) (map[string]interface{}, error) {
 	data := map[string]interface{}{
-		"has_reminders":     true,
-		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
-		"foo":               map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
+		"has_reminders": true,
+		"foo":           map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
 	}
 	return data, nil
 }
 
-func (rl *ReminderListPage) fooController(req *core.Request, params map[string]interface{}) (interface{}, error) {
+func (rl *ReminderListPage) fooController(req *core.Request, params map[string]interface{}) (map[string]interface{}, error) {
 	data := map[string]interface{}{
 		"foo": "foo",
 	}
 	return data, nil
 }
-func (rl *ReminderListPage) barController(req *core.Request, params map[string]interface{}) (interface{}, error) {
+
+func (rl *ReminderListPage) barController(req *core.Request, params map[string]interface{}) (map[string]interface{}, error) {
 	data := map[string]interface{}{
 		"foo": "bar",
+	}
+	return data, nil
+}
+
+func (rl *ReminderListPage) globalController(req *core.Request, params map[string]interface{}) (map[string]interface{}, error) {
+	data := map[string]interface{}{
+		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
 	}
 	return data, nil
 }
@@ -465,10 +500,11 @@ func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, erro
 		"on_get_or_delete": page.getOrDeleteInputHandler,
 	}
 	controllers := map[string]Controller{
+		mainAction:      page.mainAction,
 		"has_reminders": page.fooController,
 		"no_reminders":  page.barController,
 	}
-	basePage, err := newBasePage("reminder_list", page.mainController, controllers, inputs, messenger)
+	basePage, err := newBasePage("reminder_list", page.globalController, controllers, inputs, messenger)
 	if err != nil {
 		return nil, err
 	}

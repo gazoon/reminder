@@ -28,9 +28,10 @@ func main() {
 		panic(err)
 	}
 	session := new(core.Session)
-	msg := &msgsqueue.Message{Chat: &msgsqueue.Chat{ID: 231193206}}
+	msg := &msgsqueue.Message{Chat: &msgsqueue.Chat{ID: 231193206}, From: &msgsqueue.User{Name: "ooooo"}}
 	chat := &models.Chat{Chat: *msg.Chat}
-	req := &core.Request{Ctx: logging.NewContext(context.Background(), log.WithField("fooo", "bar")), Msg: msg, Chat: chat, Session: session}
-	uri, err := listPage.Enter(req, "", nil)
+	user := &models.User{User: *msg.From}
+	req := &core.Request{Ctx: logging.NewContext(context.Background(), log.WithField("fooo", "bar")), Msg: msg, Chat: chat, Session: session, User: user}
+	uri, err := listPage.Enter(req, "has_reminders", nil)
 	fmt.Println(uri, err)
 }
