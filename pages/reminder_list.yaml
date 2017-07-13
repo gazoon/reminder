@@ -9,7 +9,6 @@ actions:
         values: $reminder_previews
     - set_input_handler: "on_get_or_delete"
     - send_text: "Type: {reminder_number} delete or {{ .foo }} show\nTo delete or show details of {{ .user.Name}} particular reminder."
-    - send_text: $USER.NAME.foo
 
   no_reminders:
     - send_text: "You don't have any reminders yet. You {{ .foo }} could create one."
