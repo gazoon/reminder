@@ -11,6 +11,8 @@ import (
 	"reminder/core"
 	"reminder/core/iterator"
 
+	"reflect"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -409,7 +411,7 @@ func condStatement(data interface{}) (interface{}, error) {
 }
 
 func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) {
-	lookupFields := strings.Split(dataKey, ".")
+	lookupFields := strings.Split(strings.ToLower(dataKey), ".")
 	var value interface{} = scriptData
 	for _, field := range lookupFields {
 		if index, err := strconv.Atoi(field); err == nil {
@@ -422,9 +424,9 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 			}
 			value = array[index]
 
-		} else {
+		} else if obj, ok := value.(map[string]interface{}); ok {
 			key := field
-			obj, ok := value.(map[string]interface{})
+
 			if !ok {
 				return nil, errors.Errorf("%v not a json object, lookup key=%s", value, key)
 			}
@@ -432,9 +434,26 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 			if !ok {
 				return nil, errors.Errorf("key %s not found in %v", key, obj)
 			}
+		} else if structValue, ok := toStructValue(value); ok {
+			field = strings.Title(field)
+			fieldValue := structValue.FieldByName(field)
+			if !fieldValue.IsValid() {
+				return nil, errors.Errorf("field %s not present in %+v", field, value)
+			}
+			if !fieldValue.CanInterface() {
+				return nil, errors.Errorf("unexported field %s %v", field, value)
+			}
+			value = fieldValue.Interface()
+		} else {
+			return nil, errors.Errorf("%v is not a json object and not a struct, lookup key=%s", value, field)
 		}
 	}
 	return value, nil
+}
+
+func toStructValue(value interface{}) (reflect.Value, bool) {
+	v := reflect.Indirect(reflect.ValueOf(value))
+	return v, v.Kind() == reflect.Struct
 }
 
 func mergeScriptData(actionData, globalPageData, commonData map[string]interface{}) map[string]interface{} {
@@ -513,4 +532,9 @@ func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, erro
 		return nil, errors.Errorf("config doesn't contain preview template %v", basePage.ParsedPage.Config)
 	}
 	return &ReminderListPage{BasePage: basePage, PreviewTemplate: previewTemplate}, nil
+}
+
+type S struct {
+	aaa string
+	B   int
 }
