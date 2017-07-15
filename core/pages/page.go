@@ -533,8 +533,3 @@ func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, erro
 	}
 	return &ReminderListPage{BasePage: basePage, PreviewTemplate: previewTemplate}, nil
 }
-
-type S struct {
-	aaa string
-	B   int
-}

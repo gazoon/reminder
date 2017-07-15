@@ -3,16 +3,53 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"net/url"
+	"reminder/models"
+	"strings"
+	"sync"
+
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
-	"reminder/models"
-	"sync"
 )
 
 var (
-	gLogger = logging.WithPackage("core")
+	gLogger   = logging.WithPackage("core")
+	urlScheme = "page"
 )
+
+type URL struct {
+	Page   string
+	Action string
+	Params map[string]string
+}
+
+func NewURL(page, action string, params map[string]string) *URL {
+	return &URL{Page: page, Action: action, Params: params}
+}
+
+func NewURLString(rawurl string) (*URL, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return nil, errors.Wrap(err, "url parsing")
+	}
+	queryValues := u.Query()
+	params := make(map[string]string, len(queryValues))
+	for k := range queryValues {
+		params[k] = queryValues.Get(k)
+	}
+	action := strings.Trim(u.Path, "/")
+	return NewURL(u.Host, action, params), nil
+}
+
+func (u *URL) String() string {
+	queryValues := make(url.Values, len(u.Params))
+	for k, v := range u.Params {
+		queryValues.Set(k, v)
+	}
+	underlingURL := url.URL{Host: u.Page, Path: u.Action, Scheme: urlScheme, RawQuery: queryValues.Encode()}
+	return underlingURL.String()
+}
 
 type Request struct {
 	Session *Session
