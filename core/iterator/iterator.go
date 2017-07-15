@@ -37,15 +37,14 @@ type Command struct {
 	Args interface{}
 }
 
-type ForeachArgs struct {
-	Function string        `mapstructure:"function"`
-	Values   []interface{} `mapstructure:"values"`
+type Button struct {
+	Text    string
+	Handler *core.URL
+	Intents []string
 }
 
-type Button struct {
-	Text    string   `mapstructure:"text"`
-	Handler string   `mapstructure:"handler"`
-	Intents []string `mapstructure:"intents"`
+func (b Button) String() string {
+	return logging.ObjToString(&b)
 }
 
 type Iterator struct {
@@ -68,23 +67,6 @@ func New(req *core.Request, script []*Command, messenger messenger.Messenger) *I
 	return &Iterator{req: req, messenger: messenger, initScript: script, logger: logger}
 }
 
-func parseButtonsArg(buttonsData interface{}) ([]*Button, error) {
-	buttonsArray, ok := buttonsData.([]interface{})
-	if !ok {
-		return nil, errors.Errorf("expected array, not %v", buttonsData)
-	}
-	buttons := make([]*Button, len(buttonsArray))
-	for i, buttonData := range buttonsArray {
-		button := &Button{}
-		err := mapstructure.Decode(buttonData, button)
-		if err != nil {
-			return nil, err
-		}
-		buttons[i] = button
-	}
-	return buttons, nil
-}
-
 func (iter *Iterator) sendText(args interface{}) error {
 	text, ok := args.(string)
 	if !ok {
@@ -103,16 +85,29 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	if !ok {
 		return errors.Errorf("expected string 'text' param, not %v", params["text"])
 	}
-	buttons, err := parseButtonsArg(params["buttons"])
-	if err != nil {
-		return errors.Wrap(err, "cannot parse buttons param")
+	buttons, ok := params["buttons"].([]*Button)
+	if !ok {
+		return errors.Errorf("buttons param must be []*Button, not %v", params["buttons"])
 	}
 	messengerButtons := make([]*messenger.Button, len(buttons))
 	for i, button := range buttons {
-		messengerButtons[i] = &messenger.Button{button.Text, button.Handler}
-		iter.req.Session.AddIntent(&core.Intent{Words: button.Intents, Handler: button.Handler})
+		var payload string
+		if button.Handler != nil {
+			payload = button.Handler.String()
+		} else {
+			payload = button.Text
+		}
+		messengerButtons[i] = &messenger.Button{button.Text, payload}
+		if button.Intents != nil {
+			if button.Handler == nil {
+				return errors.Errorf("button with intents without handler %+v", button)
+			}
+			iter.req.Session.AddIntent(button.Intents, button.Handler)
+		}
 	}
-	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
+	iter.logger.WithFields(log.Fields{"text": text, "buttons": messengerButtons}).
+		Info("Send text with connected buttons to the messenger")
+	_, err := iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
 	return errors.Wrap(err, "messenger send text with buttons")
 }
 
@@ -147,7 +142,10 @@ func unfoldForeach(script []*Command) ([]*Command, error) {
 			script = append(script, cmd)
 			continue
 		}
-		foreach := &ForeachArgs{}
+		foreach := &struct {
+			Function string        `mapstructure:"function"`
+			Values   []interface{} `mapstructure:"values"`
+		}{}
 		err := mapstructure.Decode(cmd.Args, foreach)
 		if err != nil {
 			return nil, errors.Wrapf(err, "bad args %v for foreach command", cmd.Args)

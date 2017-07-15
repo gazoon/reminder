@@ -32,6 +32,9 @@ func main() {
 	chat := &models.Chat{Chat: *msg.Chat}
 	user := &models.User{User: *msg.From}
 	req := &core.Request{Ctx: logging.NewContext(context.Background(), log.WithField("fooo", "bar")), Msg: msg, Chat: chat, Session: session, User: user}
-	uri, err := listPage.Enter(req, "has_reminders", nil)
+	req.URL = core.NewURL("ooo", "has_reminders", nil)
+	uri, err := listPage.Enter(req)
 	fmt.Println(uri, err)
+	fmt.Println(listPage.Intents)
+	fmt.Println(req.Session.LocalIntents)
 }

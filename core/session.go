@@ -13,9 +13,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	DefaultAction = "main"
+	urlScheme     = "page"
+)
+
 var (
-	gLogger   = logging.WithPackage("core")
-	urlScheme = "page"
+	gLogger = logging.WithPackage("core")
 )
 
 type URL struct {
@@ -25,13 +29,19 @@ type URL struct {
 }
 
 func NewURL(page, action string, params map[string]string) *URL {
+	if action == "" {
+		action = DefaultAction
+	}
 	return &URL{Page: page, Action: action, Params: params}
 }
 
-func NewURLString(rawurl string) (*URL, error) {
+func NewURLFromStr(rawurl string) (*URL, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, errors.Wrap(err, "url parsing")
+	}
+	if u.Scheme != urlScheme && u.Scheme != "" {
+		return nil, errors.Errorf("supported scheme %s, found %s", urlScheme, u.Scheme)
 	}
 	queryValues := u.Query()
 	params := make(map[string]string, len(queryValues))
@@ -42,7 +52,7 @@ func NewURLString(rawurl string) (*URL, error) {
 	return NewURL(u.Host, action, params), nil
 }
 
-func (u *URL) String() string {
+func (u URL) String() string {
 	queryValues := make(url.Values, len(u.Params))
 	for k, v := range u.Params {
 		queryValues.Set(k, v)
@@ -51,26 +61,31 @@ func (u *URL) String() string {
 	return underlingURL.String()
 }
 
+func (u *URL) IsRelative() bool {
+	return u.Page == ""
+}
+
 type Request struct {
 	Session *Session
 	Ctx     context.Context
 	Msg     *msgsqueue.Message
 	Chat    *models.Chat
 	User    *models.User
+	URL     *URL
 }
 
 type Session struct {
-	ID              string
-	CurrentPageName string
-	LocalIntents    []*Intent
-	InputHandler    string
-	ChatID          int
-	PagesStates     map[string]map[string]interface{}
-	GlobalState     map[string]interface{}
+	ID           string
+	CurrentURL   *URL
+	LocalIntents []*Intent
+	InputHandler string
+	ChatID       int
+	PagesStates  map[string]map[string]interface{}
+	GlobalState  map[string]interface{}
 }
 
-func (s *Session) AddIntent(intent *Intent) {
-	s.LocalIntents = append(s.LocalIntents, intent)
+func (s *Session) AddIntent(words []string, handler *URL) {
+	s.LocalIntents = append(s.LocalIntents, NewIntent(handler, words))
 }
 
 func (s *Session) SetInputHandler(ctx context.Context, handler string) {
