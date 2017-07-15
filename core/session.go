@@ -52,13 +52,17 @@ func NewURLFromStr(rawurl string) (*URL, error) {
 	return NewURL(u.Host, action, params), nil
 }
 
-func (u URL) String() string {
+func (u *URL) Encode() string {
 	queryValues := make(url.Values, len(u.Params))
 	for k, v := range u.Params {
 		queryValues.Set(k, v)
 	}
 	underlingURL := url.URL{Host: u.Page, Path: u.Action, Scheme: urlScheme, RawQuery: queryValues.Encode()}
 	return underlingURL.String()
+}
+
+func (u URL) String() string {
+	return logging.ObjToString(&u)
 }
 
 func (u *URL) IsRelative() bool {

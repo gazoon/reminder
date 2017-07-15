@@ -93,7 +93,7 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	for i, button := range buttons {
 		var payload string
 		if button.Handler != nil {
-			payload = button.Handler.String()
+			payload = button.Handler.Encode()
 		} else {
 			payload = button.Text
 		}
