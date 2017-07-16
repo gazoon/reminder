@@ -1,1 +1,4 @@
 4. add response type
+5. add global intents
+6. make libs independent from each other (logging)
+7. add settings arg

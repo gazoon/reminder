@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
-	"reminder/models"
 	"strings"
 	"sync"
 
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
+	"github.com/satori/go.uuid"
 )
 
 const (
@@ -73,19 +73,36 @@ type Request struct {
 	Session *Session
 	Ctx     context.Context
 	Msg     *msgsqueue.Message
-	Chat    *models.Chat
-	User    *models.User
+	Chat    *msgsqueue.Chat
+	User    *msgsqueue.User
 	URL     *URL
+}
+
+func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *Request {
+	u, err := NewURLFromStr(msg.Text)
+	if err != nil {
+		u = nil
+	}
+	return &Request{Session: session, Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From, URL: u}
 }
 
 type Session struct {
 	ID           string
-	CurrentURL   *URL
+	ChatID       int
+	LastURL      *URL
 	LocalIntents []*Intent
 	InputHandler string
-	ChatID       int
 	PagesStates  map[string]map[string]interface{}
 	GlobalState  map[string]interface{}
+}
+
+func NewSession(chatID int) *Session {
+	sessionID := uuid.NewV4()
+	return &Session{ChatID: chatID, ID: sessionID}
+}
+
+func (s Session) String() string {
+	return logging.ObjToString(&s)
 }
 
 func (s *Session) AddIntent(words []string, handler *URL) {

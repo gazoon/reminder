@@ -1,0 +1,32 @@
+{
+  "telegram_polling": {
+    "poll_timeout": 60,
+    "retry_delay": 3
+  },
+  "telegram": {
+    "api_token": "282857391:AAEEdYoGCEa-MzLMKXUABvSTaOLUSaSS53Y",
+    "bot_name": "PMNotifierBot",
+    "http_timeout": 10,
+    "retries": 3
+  },
+  "mongo_messages": {
+    "database": "local",
+    "host": "localhost",
+    "port": 27017,
+    "user": "",
+    "password": "",
+    "timeout": 1,
+    "pool_size": 10,
+    "retries_num": 3,
+    "retries_interval": 500,
+    "fetch_delay": 500,
+    "workers_num": 10
+  },
+  "logging": {
+    "default_level": "info",
+    "toggle_port": 8989,
+    "toggle_path": "/toggle_log"
+  },
+  "service_name": "reminder_bot",
+  "server_id": "228"
+}
