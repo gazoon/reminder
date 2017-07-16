@@ -11,6 +11,7 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
+	"reflect"
 )
 
 const (
@@ -69,6 +70,10 @@ func (u *URL) IsRelative() bool {
 	return u.Page == ""
 }
 
+func (u *URL) Copy() *URL {
+	return NewURL(u.Page, u.Action, u.Params)
+}
+
 type Request struct {
 	Session *Session
 	Ctx     context.Context
@@ -89,9 +94,8 @@ func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *
 type Session struct {
 	ID           string
 	ChatID       int
-	LastURL      *URL
 	LocalIntents []*Intent
-	InputHandler string
+	InputHandler *URL
 	PagesStates  map[string]map[string]interface{}
 	GlobalState  map[string]interface{}
 }
@@ -109,7 +113,7 @@ func (s *Session) AddIntent(words []string, handler *URL) {
 	s.LocalIntents = append(s.LocalIntents, NewIntent(handler, words))
 }
 
-func (s *Session) SetInputHandler(ctx context.Context, handler string) {
+func (s *Session) SetInputHandler(ctx context.Context, handler *URL) {
 	logger := logging.FromContextAndBase(ctx, gLogger)
 	logger.Infof("Change input handler new: %s, old: %s", handler, s.InputHandler)
 	s.InputHandler = handler

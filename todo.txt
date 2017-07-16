@@ -2,3 +2,5 @@
 5. add global intents
 6. make libs independent from each other (logging)
 7. add settings arg
+8. test input handlers
+9. test session storage

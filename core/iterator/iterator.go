@@ -112,9 +112,9 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 }
 
 func (iter *Iterator) setInputHandler(args interface{}) error {
-	handler, ok := args.(string)
+	handler, ok := args.(*core.URL)
 	if !ok {
-		return errors.Errorf("expected string arg, got %v", args)
+		return errors.Errorf("expected *core.URL arg, got %v", args)
 	}
 	iter.req.Session.SetInputHandler(iter.req.Ctx, handler)
 	return nil
