@@ -21,7 +21,10 @@ const (
 )
 
 var (
-	gLogger = logging.WithPackage("core")
+	gLogger         = logging.WithPackage("core")
+	HomePageURL     = NewURL("home", "", nil)
+	NotFoundPageURL = NewURL("not_found", "", nil)
+	DefaultPageURL  = HomePageURL
 )
 
 type URL struct {
@@ -33,6 +36,9 @@ type URL struct {
 func NewURL(page, action string, params map[string]string) *URL {
 	if action == "" {
 		action = DefaultAction
+	}
+	if params == nil {
+		params = make(map[string]string)
 	}
 	return &URL{Page: page, Action: action, Params: params}
 }
@@ -55,6 +61,9 @@ func NewURLFromStr(rawurl string) (*URL, error) {
 }
 
 func (u *URL) Encode() string {
+	if u == nil {
+		return ""
+	}
 	queryValues := make(url.Values, len(u.Params))
 	for k, v := range u.Params {
 		queryValues.Set(k, v)
@@ -85,17 +94,22 @@ type Request struct {
 }
 
 func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *Request {
-	u, err := NewURLFromStr(msg.Text)
+	return &Request{Session: session, Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From}
+}
+
+func (r *Request) URLFromMsgText() *URL {
+	u, err := NewURLFromStr(r.Msg.Text)
 	if err != nil {
 		u = nil
 	}
-	return &Request{Session: session, Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From, URL: u}
+	return u
 }
 
 type Session struct {
 	ID           string
 	ChatID       int
 	LocalIntents []*Intent
+	LastPage     *URL
 	InputHandler *URL
 	PagesStates  map[string]map[string]interface{}
 	GlobalState  map[string]interface{}
@@ -118,6 +132,26 @@ func (s *Session) SetInputHandler(ctx context.Context, handler *URL) {
 	logger := logging.FromContextAndBase(ctx, gLogger)
 	logger.Infof("Change input handler new: %s, old: %s", handler, s.InputHandler)
 	s.InputHandler = handler
+}
+
+func (s *Session) ResetInputHandler(ctx context.Context) {
+	logger := logging.FromContextAndBase(ctx, gLogger)
+	logger.Infof("Reset input handler %s", s.InputHandler.Encode())
+	s.InputHandler = nil
+}
+
+func (s *Session) ResetIntents(ctx context.Context) {
+	if s.LocalIntents != nil {
+		logger := logging.FromContextAndBase(ctx, gLogger)
+		logger.Infof("Reset local intents %v", s.LocalIntents)
+		s.LocalIntents = nil
+	}
+}
+
+func (s *Session) SetLastPage(ctx context.Context, newLastPage *URL) {
+	logger := logging.FromContextAndBase(ctx, gLogger)
+	logger.Infof("Change last page %s ---> %s", s.LastPage, newLastPage)
+	s.LastPage = newLastPage
 }
 
 type Storage interface {
@@ -177,6 +211,7 @@ type SessionInMongo struct {
 	SessionID    string                            `bson:"session_id"`
 	ChatID       int                               `bson:"chat_id"`
 	LocalIntents []*IntentInMongo                  `bson:"local_intents"`
+	LastPage     string                            `bson:"last_page"`
 	InputHandler string                            `bson:"input_handler"`
 	PagesStates  map[string]map[string]interface{} `bson:"pages_states"`
 	GlobalState  map[string]interface{}            `bson:"global_states"`
@@ -206,8 +241,13 @@ func (sm *SessionInMongo) ToSession() (*Session, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "storage contains bad input handler")
 	}
+	lastPageURL, err := NewURLFromStr(sm.LastPage)
+	if err != nil {
+		return nil, errors.Wrap(err, "storage contains bad last page")
+	}
 	model.LocalIntents = localIntents
 	model.InputHandler = inputHandlerURL
+	model.LastPage = lastPageURL
 	return model, nil
 }
 
@@ -216,6 +256,7 @@ func NewSessionInMongo(session *Session) *SessionInMongo {
 	sm.SessionID = session.ID
 	sm.ChatID = session.ChatID
 	sm.InputHandler = session.InputHandler.Encode()
+	sm.PagesStates = session.LastPage.Encode()
 	sm.GlobalState = session.GlobalState
 	sm.PagesStates = session.PagesStates
 	sm.LocalIntents = make([]*IntentInMongo, len(session.LocalIntents))

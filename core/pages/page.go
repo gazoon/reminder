@@ -40,7 +40,7 @@ func parseYAML(data []byte, val interface{}) error {
 
 type Page interface {
 	GetName() string
-	GetIntents() []*core.Intent
+	HandleIntent(req *core.Request) (*core.URL, error)
 	Enter(req *core.Request) (*core.URL, error)
 }
 
@@ -169,8 +169,9 @@ func (bp *BasePage) GetName() string {
 	return bp.Name
 }
 
-func (bp *BasePage) GetIntents() []*core.Intent {
-	return bp.Intents
+func (bp *BasePage) HandleIntent(req *core.Request) (*core.URL, error) {
+	req.Session.ResetIntents(req.Ctx)
+	return core.NotFoundPageURL, nil
 }
 
 func (bp *BasePage) actionNames() []string {
