@@ -19,6 +19,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"os"
 )
 
 const (
@@ -75,19 +76,23 @@ type BasePage struct {
 func newBasePage(name string, globalController Controller, actionControllers map[string]Controller,
 	messenger messenger.Messenger) (*BasePage, error) {
 
+	parsedPage := new(PageStructure)
+	var actions map[string][]*SequenceItem
 	filePath := path.Join(pagesFolder, name+fileExtension)
 	fileContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return nil, errors.Wrap(err, "read page content")
-	}
-	parsedPage := new(PageStructure)
-	err = fileContentParser(fileContent, parsedPage)
-	if err != nil {
-		return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
-	}
-	actions, err := retrieveActions(parsedPage)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot retrieve actions")
+		if !os.IsNotExist(err) {
+			return nil, errors.Wrap(err, "read page content")
+		}
+	} else {
+		err = fileContentParser(fileContent, parsedPage)
+		if err != nil {
+			return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
+		}
+		actions, err = retrieveActions(parsedPage)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot retrieve actions")
+		}
 	}
 	logger := logging.NewObjectLogger("pages", log.Fields{"page": name})
 
@@ -243,7 +248,8 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 	actionName := req.URL.Action
 	nextAction, ok := bp.actionViews[actionName]
 	if !ok {
-		return nil, errors.Errorf("action %s not found in %v", actionName, bp.actionNames())
+		bp.GetLogger(req.Ctx).Infof("There is no action view for %s", actionName)
+		return nil, nil
 	}
 	visitedActions := map[string]bool{actionName: true}
 	var script []*iterator.Command

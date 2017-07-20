@@ -33,6 +33,20 @@ type UIPresenter struct {
 	settings *PresenterSettings
 }
 
+func New() *UIPresenter  {
+
+}
+func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
+	if uip.needSkip(ctx, msg) {
+		return
+	}
+	req := core.NewRequest(ctx, msg)
+	ok := uip.dispatchRequest(req)
+	if !ok {
+		uip.sendError(req)
+	}
+}
+
 func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bool {
 	if msg.Chat.IsPrivate {
 		return false
@@ -47,17 +61,6 @@ func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bo
 		return true
 	}
 	return false
-}
-
-func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
-	if uip.needSkip(ctx, msg) {
-		return
-	}
-	req := core.NewRequest(ctx, msg)
-	ok := uip.dispatchRequest(req)
-	if !ok {
-		uip.sendError(req)
-	}
 }
 
 func (uip *UIPresenter) sendError(req *core.Request) {
