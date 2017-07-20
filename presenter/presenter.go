@@ -2,12 +2,17 @@ package presenter
 
 import (
 	"context"
+	"reminder/core"
+	"reminder/core/pages"
+
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
-	"reminder/core"
-	"reminder/core/pages"
+)
+
+const (
+	errorMessageText = "An internal bot error occurred."
 )
 
 var (
@@ -45,20 +50,23 @@ func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bo
 }
 
 func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
-	logger := uip.GetLogger(ctx)
 	if uip.needSkip(ctx, msg) {
 		return
 	}
-	session, err := uip.getOrCreateSession(ctx, msg)
-	if err != nil {
-		logger.Errorf("Cannot init chat session: %s", err)
-		return
+	req := core.NewRequest(ctx, msg)
+	ok := uip.dispatchRequest(req)
+	if !ok {
+		uip.sendError(req)
 	}
-	req := core.NewRequest(ctx, msg, session)
-	uip.dispatchRequest(req)
-	err=uip.sessionStorage.Save(ctx,session)
-	if err!= nil {
+}
 
+func (uip *UIPresenter) sendError(req *core.Request) {
+	logger := uip.GetLogger(req.Ctx)
+	logger.WithField("chat_id", req.Chat.ID).Info("Sending error msg to the chat")
+	_, err := uip.messenger.SendText(req.Ctx, req.Chat.ID, errorMessageText)
+	if err != nil {
+		logger.Errorf("Cannot send error msg: %s", err)
+		return
 	}
 }
 
@@ -70,30 +78,34 @@ func (uip *UIPresenter) getPage(pageURL *core.URL) (pages.Page, error) {
 	return page, nil
 }
 
-func (uip *UIPresenter) dispatchRequest(req *core.Request) {
+func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 	logger := uip.GetLogger(req.Ctx)
+	var err error
+	req.Session, err = uip.getOrCreateSession(req)
+	if err != nil {
+		logger.Errorf("Cannot init chat session: %s", err)
+		return false
+	}
 	req.URL = req.URLFromMsgText()
 	if req.URL != nil {
 		logger.Infof("Request url %s from the message text", req.URL.Encode())
-	}
-	if req.Session.InputHandler != nil && req.URL == nil {
+	} else if req.Session.InputHandler != nil {
 		logger.Infof("Session contains input handler %s, set it to the request url", req.Session.InputHandler.Encode())
 		req.URL = req.Session.InputHandler
 		req.Session.ResetInputHandler(req.Ctx)
-	}
-
-	if req.URL == nil {
+	} else {
 		lastPageURL := req.Session.LastPage
 		lastPage, err := uip.getPage(lastPageURL)
 		if err != nil {
 			logger.Errorf("Cannot get last page object: %s", err)
-			return
+			return false
 		}
 		logger := logger.WithField("last_page", lastPage.GetName())
 		logger.Info("Handle intent on the last page")
 		req.URL, err = lastPage.HandleIntent(req)
 		if err != nil {
 			logger.Errorf("Last page handle intent failed: %s", err)
+			return false
 		}
 		logger.Infof("Request url %s from intent handling", req.URL.Encode())
 	}
@@ -101,29 +113,41 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) {
 		page, err := uip.getPage(req.URL)
 		if err != nil {
 			logger.Errorf("Cannot get page during request iteration: %s", err)
-			return
+			return false
 		}
 		logger.Info("Enter %s", req.URL.Encode())
 		nextURL, err := page.Enter(req)
 		if err != nil {
 			logger.Errorf("Page %s failed: %s", page.GetName(), err)
-			return
+			return false
 		}
 		req.Session.SetLastPage(req.Ctx, req.URL)
 		req.URL = nextURL
 	}
 	logger.Info("Pages iteration is successfully over")
+	return uip.saveSession(req)
 }
 
-func (uip *UIPresenter) getOrCreateSession(ctx context.Context, msg *msgsqueue.Message) (*core.Session, error) {
-	session, err := uip.sessionStorage.Get(ctx, msg.Chat.ID)
+func (uip *UIPresenter) saveSession(req *core.Request) bool {
+	logger := uip.GetLogger(req.Ctx)
+	logger.Info("Saving session to the storage")
+	err := uip.sessionStorage.Save(req.Ctx, req.Session)
+	if err != nil {
+		logger.Errorf("Session saving failed: %s", err)
+		return false
+	}
+	return true
+}
+
+func (uip *UIPresenter) getOrCreateSession(req *core.Request) (*core.Session, error) {
+	session, err := uip.sessionStorage.Get(req.Ctx, req.Msg.Chat.ID)
 	if err != nil {
 		return nil, errors.Wrap(err, "storage get")
 	}
-	logger := uip.GetLogger(ctx)
+	logger := uip.GetLogger(req.Ctx)
 	if session == nil {
-		logger.WithField("chat_id", msg.Chat.ID).Info("session doesn't exist for chat, init a new one")
-		session = core.NewSession(msg.Chat.ID)
+		logger.WithField("chat_id", req.Msg.Chat.ID).Info("session doesn't exist for chat, init a new one")
+		session = core.NewSession(req.Msg.Chat.ID)
 	} else {
 		logger.WithField("session", session).Info("chat session from storage")
 	}

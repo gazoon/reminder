@@ -93,8 +93,8 @@ type Request struct {
 	URL     *URL
 }
 
-func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *Request {
-	return &Request{Session: session, Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From}
+func NewRequest(ctx context.Context, msg *msgsqueue.Message) *Request {
+	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From}
 }
 
 func (r *Request) URLFromMsgText() *URL {
