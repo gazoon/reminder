@@ -16,6 +16,9 @@ actions:
         "Problems with title: {{.ErrorMsg}}. Type again."
         {{end}}
 
+  on_title:
+    - redirect: "enter_date"
+
   enter_date:
     - set_input_handler: "on_date"
     - send_text:
@@ -24,6 +27,9 @@ actions:
         {{else}}
         "Problems with date: {{.ErrorMsg}}. Type again."
         {{end}}
+
+  on_date:
+    - redirect: "enter_description"
 
   enter_description:
     - set_input_handler: "on_description"
@@ -36,6 +42,9 @@ actions:
     - send_buttons:
       - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
 
+  on_description:
+    - redirect: "enter_description"
+
   add_attachment:
     - send_text:
         {{if eq .error_msg ""}}
@@ -45,6 +54,10 @@ actions:
         {{end}}
     - send_buttons:
       - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
+
+  on_attachment:
+    - redirect: "add_attachment"
+
   done:
     - redirect: "page://finish_reminder_creation"
 

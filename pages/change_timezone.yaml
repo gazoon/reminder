@@ -1,16 +1,16 @@
 
 actions:
   main:
-    - set_input_handler:
-        handler: "on_timezone"
-        next: "page://timezone/changed"
-
+    - set_input_handler: "on_timezone"
     - send_text:
         {{ if eq .error_msg ""}}
         "Type your timezone (e.g. -3 or +2):"
         {{else}}
         "Problems with timezone: {{.ErrorMsg}}. Type again:"
         {{end}}
+
+  on_timezone:
+    - redirect: "changed"
 
   changed:
     - send_text: "Timezone changed"

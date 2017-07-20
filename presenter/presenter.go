@@ -15,10 +15,6 @@ const (
 	errorMessageText = "An internal bot error occurred."
 )
 
-var (
-	gLogger = logging.WithPackage("ui_presenter")
-)
-
 type PresenterSettings struct {
 	SupportGroups       bool
 	OnlyAppealsInGroups bool
@@ -33,9 +29,17 @@ type UIPresenter struct {
 	settings *PresenterSettings
 }
 
-func New() *UIPresenter  {
+func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[string]pages.Page,
+	settings *PresenterSettings) *UIPresenter {
 
+	logger := logging.NewObjectLogger("ui_presenter", nil)
+	if settings == nil {
+		settings = new(PresenterSettings)
+	}
+	return &UIPresenter{ObjectLogger: logger, messenger: messenger, sessionStorage: storage,
+		pageRegistry: pageRegistry, settings: settings}
 }
+
 func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
 	if uip.needSkip(ctx, msg) {
 		return
@@ -92,6 +96,7 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 	req.URL = req.URLFromMsgText()
 	if req.URL != nil {
 		logger.Infof("Request url %s from the message text", req.URL.Encode())
+		req.Session.ResetInputHandler(req.Ctx)
 	} else if req.Session.InputHandler != nil {
 		logger.Infof("Session contains input handler %s, set it to the request url", req.Session.InputHandler.Encode())
 		req.URL = req.Session.InputHandler
