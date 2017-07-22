@@ -55,39 +55,16 @@ func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
 	}
 }
 
-func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bool {
-	if msg.Chat.IsPrivate {
+func (uip *UIPresenter) handleMessage(ctx context.Context, msg *msgsqueue.Message) bool {
+	logger := uip.GetLogger(ctx)
+	session, err := uip.getOrCreateSession(ctx,msg)
+	if err != nil {
+		logger.Errorf("Cannot init chat session: %s", err)
 		return false
 	}
-	logger := uip.GetLogger(ctx).WithField("chat_id", msg.Chat.ID)
-	if !uip.settings.SupportGroups {
-		logger.Info("chat is group, skip")
-		return true
-	}
-	if uip.settings.OnlyAppealsInGroups && !msg.IsAppeal {
-		logger.WithField("msg_text", msg.Text).Info("message text doesn't contain an appeal to the bot, skip")
-		return true
-	}
-	return false
+	req := core.NewRequest(ctx, msg,session)
 }
 
-func (uip *UIPresenter) sendError(req *core.Request) {
-	logger := uip.GetLogger(req.Ctx)
-	logger.WithField("chat_id", req.Chat.ID).Info("Sending error msg to the chat")
-	_, err := uip.messenger.SendText(req.Ctx, req.Chat.ID, errorMessageText)
-	if err != nil {
-		logger.Errorf("Cannot send error msg: %s", err)
-		return
-	}
-}
-
-func (uip *UIPresenter) getPage(pageURL *core.URL) (pages.Page, error) {
-	page, ok := uip.pageRegistry[pageURL.Page]
-	if !ok {
-		return nil, errors.Errorf("url %s leads to not known page %s", pageURL.Encode(), pageURL.Page)
-	}
-	return page, nil
-}
 
 func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 	logger := uip.GetLogger(req.Ctx)
@@ -127,7 +104,7 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 			logger.Errorf("Cannot get page during request iteration: %s", err)
 			return false
 		}
-		logger.Info("Enter %s", req.URL.Encode())
+		logger.Infof("Enter %s", req.URL.Encode())
 		nextURL, err := page.Enter(req)
 		if err != nil {
 			logger.Errorf("Page %s failed: %s", page.GetName(), err)
@@ -151,15 +128,15 @@ func (uip *UIPresenter) saveSession(req *core.Request) bool {
 	return true
 }
 
-func (uip *UIPresenter) getOrCreateSession(req *core.Request) (*core.Session, error) {
-	session, err := uip.sessionStorage.Get(req.Ctx, req.Msg.Chat.ID)
+func (uip *UIPresenter) getOrCreateSession(ctx context.Context,msg *msgsqueue.Message) (*core.Session, error) {
+	session, err := uip.sessionStorage.Get(ctx, msg.Chat.ID)
 	if err != nil {
 		return nil, errors.Wrap(err, "storage get")
 	}
-	logger := uip.GetLogger(req.Ctx)
+	logger := uip.GetLogger(ctx)
 	if session == nil {
-		logger.WithField("chat_id", req.Msg.Chat.ID).Info("session doesn't exist for chat, init a new one")
-		session = core.NewSession(req.Msg.Chat.ID)
+		logger.WithField("chat_id", msg.Chat.ID).Info("session doesn't exist for chat, init a new one")
+		session = core.NewSession(msg.Chat.ID)
 	} else {
 		logger.WithField("session", session).Info("chat session from storage")
 	}
@@ -167,4 +144,38 @@ func (uip *UIPresenter) getOrCreateSession(req *core.Request) (*core.Session, er
 		session.LastPage = core.DefaultPageURL
 	}
 	return session, nil
+}
+
+func (uip *UIPresenter) sendError(req *core.Request) {
+	logger := uip.GetLogger(req.Ctx)
+	logger.WithField("chat_id", req.Chat.ID).Info("Sending error msg to the chat")
+	_, err := uip.messenger.SendText(req.Ctx, req.Chat.ID, errorMessageText)
+	if err != nil {
+		logger.Errorf("Cannot send error msg: %s", err)
+		return
+	}
+}
+
+func (uip *UIPresenter) getPage(pageURL *core.URL) (pages.Page, error) {
+	page, ok := uip.pageRegistry[pageURL.Page]
+	if !ok {
+		return nil, errors.Errorf("url %s leads to not known page %s", pageURL.Encode(), pageURL.Page)
+	}
+	return page, nil
+}
+
+func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bool {
+	if msg.Chat.IsPrivate {
+		return false
+	}
+	logger := uip.GetLogger(ctx).WithField("chat_id", msg.Chat.ID)
+	if !uip.settings.SupportGroups {
+		logger.Info("chat is group, skip")
+		return true
+	}
+	if uip.settings.OnlyAppealsInGroups && !msg.IsAppeal {
+		logger.WithField("msg_text", msg.Text).Info("message text doesn't contain an appeal to the bot, skip")
+		return true
+	}
+	return false
 }

@@ -93,14 +93,17 @@ type Request struct {
 }
 
 func NewRequest(ctx context.Context, msg *msgsqueue.Message) *Request {
+	reqURL, err := NewURLFromStr(msg.Text)
+	if err != nil {
+		reqURL = nil
+	}
+	if reqURL.IsRelative() {
+		reqURL = nil
+	}
 	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From}
 }
 
 func (r *Request) URLFromMsgText() *URL {
-	u, err := NewURLFromStr(r.Msg.Text)
-	if err != nil {
-		u = nil
-	}
 	return u
 }
 

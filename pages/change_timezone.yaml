@@ -2,7 +2,7 @@
 actions:
   main:
     - set_input_handler: "on_timezone"
-    - send_text: >
+    - send_text: >-
         {{ if eq .params.error_msg ""}}
         Type your timezone (e.g. -3 or +2):
         {{else}}

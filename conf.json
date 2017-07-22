@@ -4,8 +4,8 @@
     "retry_delay": 3
   },
   "telegram": {
-    "api_token": "282857391:AAEEdYoGCEa-MzLMKXUABvSTaOLUSaSS53Y",
-    "bot_name": "PMNotifierBot",
+    "api_token": "441160175:AAHM00D7yNdxU9R5f4njLGEOs-zKBVZXbk4",
+    "bot_name": "LongRemindsBot",
     "http_timeout": 10,
     "retries": 3
   },

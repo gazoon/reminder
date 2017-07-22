@@ -13,6 +13,9 @@ import (
 
 	"reflect"
 
+	"os"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -20,8 +23,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"os"
-	"time"
 )
 
 const (
@@ -436,7 +437,7 @@ func evaluateArgs(args interface{}, scriptData map[string]interface{}) (interfac
 			}
 		} else {
 			b := bytes.Buffer{}
-			err := templ.Must(templ.New("arg").Parse(textArg)).Execute(&b, scriptData)
+			err := templ.Must(templ.New("arg").Option("missingkey=zero").Parse(textArg)).Execute(&b, scriptData)
 			if err != nil {
 				return nil, errors.Wrap(err, "template execute failed")
 			}
