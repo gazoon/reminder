@@ -15,9 +15,8 @@ import (
 )
 
 const (
-	DefaultAction   = "main"
-	urlScheme       = "page"
-	mongoCollection = "sessions"
+	DefaultAction = "main"
+	urlScheme     = "page"
 )
 
 var (
@@ -202,6 +201,41 @@ type MongoStorage struct {
 	client *mongo.Client
 }
 
+func NewMongoStorage(database, collection, user, password, host string, port, timeout, poolSize, retriesNum,
+	retriesInterval int) (*MongoStorage, error) {
+
+	client, err := mongo.NewClient(database, collection, user, password, host, port, timeout, poolSize, retriesNum,
+		retriesInterval)
+	if err != nil {
+		return nil, err
+	}
+	return &MongoStorage{client: client}, nil
+}
+
+func (ms *MongoStorage) Get(ctx context.Context, chatID int) (*Session, error) {
+	data := &SessionInMongo{}
+	err := ms.client.FindOne(ctx, bson.M{"chat_id": chatID}, data)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "mongo find one")
+	}
+	session, err := data.ToSession()
+	return session, errors.Wrapf(err, "cannot build session from mongo representation %s", data)
+}
+
+func (ms *MongoStorage) Save(ctx context.Context, session *Session) error {
+	sessionData := NewSessionInMongo(session)
+	err := ms.client.UpsertRetry(ctx, bson.M{"chat_id": session.ChatID}, sessionData)
+	return errors.Wrap(err, "mongo upsert")
+}
+
+func (ms *MongoStorage) Delete(ctx context.Context, session *Session) error {
+	_, err := ms.client.Remove(ctx, bson.M{"chat_id": session.ChatID})
+	return errors.Wrap(err, "mongo remove")
+}
+
 type IntentInMongo struct {
 	Handler string   `bson:"handler"`
 	Words   []string `bson:"words"`
@@ -215,6 +249,21 @@ type SessionInMongo struct {
 	InputHandler string                            `bson:"input_handler"`
 	PagesStates  map[string]map[string]interface{} `bson:"pages_states"`
 	GlobalState  map[string]interface{}            `bson:"global_states"`
+}
+
+func NewSessionInMongo(session *Session) *SessionInMongo {
+	sm := new(SessionInMongo)
+	sm.SessionID = session.ID
+	sm.ChatID = session.ChatID
+	sm.InputHandler = session.InputHandler.Encode()
+	sm.LastPage = session.LastPage.Encode()
+	sm.GlobalState = session.GlobalState
+	sm.PagesStates = session.PagesStates
+	sm.LocalIntents = make([]*IntentInMongo, len(session.LocalIntents))
+	for i, intent := range session.LocalIntents {
+		sm.LocalIntents[i] = &IntentInMongo{intent.Handler.Encode(), intent.Words}
+	}
+	return sm
 }
 
 func (sm SessionInMongo) String() string {
@@ -249,53 +298,4 @@ func (sm *SessionInMongo) ToSession() (*Session, error) {
 	model.InputHandler = inputHandlerURL
 	model.LastPage = lastPageURL
 	return model, nil
-}
-
-func NewSessionInMongo(session *Session) *SessionInMongo {
-	sm := new(SessionInMongo)
-	sm.SessionID = session.ID
-	sm.ChatID = session.ChatID
-	sm.InputHandler = session.InputHandler.Encode()
-	sm.LastPage = session.LastPage.Encode()
-	sm.GlobalState = session.GlobalState
-	sm.PagesStates = session.PagesStates
-	sm.LocalIntents = make([]*IntentInMongo, len(session.LocalIntents))
-	for i, intent := range session.LocalIntents {
-		sm.LocalIntents[i] = &IntentInMongo{intent.Handler.Encode(), intent.Words}
-	}
-	return sm
-}
-
-func NewMongoStorage(database, user, password, host string, port, timeout, poolSize, retriesNum, retriesInterval int) (*MongoStorage, error) {
-
-	client, err := mongo.NewClient(database, mongoCollection, user, password, host, port, timeout, poolSize, retriesNum,
-		retriesInterval)
-	if err != nil {
-		return nil, err
-	}
-	return &MongoStorage{client: client}, nil
-}
-
-func (ms *MongoStorage) Get(ctx context.Context, chatID int) (*Session, error) {
-	data := &SessionInMongo{}
-	err := ms.client.FindOne(ctx, bson.M{"chat_id": chatID}, data)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "mongo find one")
-	}
-	session, err := data.ToSession()
-	return session, errors.Wrapf(err, "cannot build session from mongo representation %s", data)
-}
-
-func (ms *MongoStorage) Save(ctx context.Context, session *Session) error {
-	sessionData := NewSessionInMongo(session)
-	err := ms.client.UpsertRetry(ctx, bson.M{"chat_id": session.ChatID}, sessionData)
-	return errors.Wrap(err, "mongo upsert")
-}
-
-func (ms *MongoStorage) Delete(ctx context.Context, session *Session) error {
-	_, err := ms.client.Remove(ctx, bson.M{"chat_id": session.ChatID})
-	return errors.Wrap(err, "mongo remove")
 }

@@ -13,8 +13,8 @@ var (
 
 type ServiceConfig struct {
 	config.BaseConfig
-	MongoMessages   *config.DatabaseQueue    `json:"mongo_messages"`
-	MongoStorage    *config.DatabaseSettings `json:"mongo_storage"`
+	MongoMessages   *config.MongoQueue       `json:"mongo_messages"`
+	MongoStorage    *config.MongoDBSettings  `json:"mongo_storage"`
 	Telegram        *config.TelegramSettings `json:"telegram"`
 	TelegramPolling *config.TelegramPolling  `json:"telegram_polling"`
 	Logging         *config.Logging          `json:"logging"`

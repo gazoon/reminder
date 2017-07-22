@@ -30,8 +30,8 @@ func CreateTelegramMessenger() (messenger.Messenger, error) {
 
 func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	conf := config.GetInstance().MongoMessages
-	incomingMongoQueue, err := msgsqueue.NewMongoQueue(conf.Database, conf.User, conf.Password, conf.Host, conf.Port,
-		conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
+	incomingMongoQueue, err := msgsqueue.NewMongoQueue(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
+		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
 }
 
@@ -41,8 +41,8 @@ func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, e
 		return nil, errors.Wrap(err, "pages registry")
 	}
 	conf := config.GetInstance().MongoStorage
-	sessionStorage, err := core.NewMongoStorage(conf.Database, conf.User, conf.Password, conf.Host, conf.Port, conf.Timeout,
-		conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
+	sessionStorage, err := core.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
+		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
 	if err != nil {
 		return nil, errors.Wrap(err, "mongo storage")
 	}
