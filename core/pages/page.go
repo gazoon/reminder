@@ -16,6 +16,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
+	"github.com/gazoon/bot_libs/utils"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -108,7 +109,7 @@ func (pb *PagesBuilder) InstantiatePages(pageConstructors ...func(*PagesBuilder)
 	for _, constructor := range pageConstructors {
 		page, err := constructor(pb)
 		if err != nil {
-			return nil, errors.Wrapf(err, "page constructor %v failed", constructor)
+			return nil, errors.Wrapf(err, "page constructor %s failed", utils.FunctionName(constructor))
 		}
 		registry[page.GetName()] = page
 	}
@@ -174,7 +175,7 @@ func (bp *BasePage) Enter(req *core.Request) (*core.URL, error) {
 	if controller, ok := bp.actionControllers[req.URL.Action]; ok {
 		var err error
 		var redirectURI *core.URL
-		actionData, err = controller(req)
+		actionData, redirectURI, err = controller(req)
 		if err != nil {
 			return nil, errors.Wrapf(err, "controller %s failed", req.URL.Action)
 		}
@@ -615,7 +616,7 @@ func mergeScriptData(actionData, globalPageData, commonData map[string]interface
 	return result
 }
 
-func NewHomePage(builder *PagesBuilder) (*BasePage, error) {
+func NewHomePage(builder *PagesBuilder) (Page, error) {
 	return builder.NewBasePage("home", nil, nil)
 }
 
@@ -624,7 +625,7 @@ type ReminderListPage struct {
 	PreviewTemplate string
 }
 
-func NewReminderListPage(builder *PagesBuilder) (*ReminderListPage, error) {
+func NewReminderListPage(builder *PagesBuilder) (Page, error) {
 	page := new(ReminderListPage)
 	controllers := map[string]Controller{
 		core.DefaultAction: page.mainAction,
@@ -646,7 +647,7 @@ func NewReminderListPage(builder *PagesBuilder) (*ReminderListPage, error) {
 }
 
 func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (rl *ReminderListPage) mainAction(req *core.Request) (map[string]interface{}, *core.URL, error) {
@@ -654,35 +655,35 @@ func (rl *ReminderListPage) mainAction(req *core.Request) (map[string]interface{
 		"has_reminders": true,
 		"foo":           map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
 	}
-	return data, nil
+	return data, nil, nil
 }
 
 func (rl *ReminderListPage) fooController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	data := map[string]interface{}{
 		"foo": "foo",
 	}
-	return data, nil
+	return data, nil, nil
 }
 
 func (rl *ReminderListPage) barController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	data := map[string]interface{}{
 		"foo": "bar",
 	}
-	return data, nil
+	return data, nil, nil
 }
 
 func (rl *ReminderListPage) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	data := map[string]interface{}{
 		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
 	}
-	return data, nil
+	return data, nil, nil
 }
 
 type ChangeTimezonePage struct {
 	*BasePage
 }
 
-func NewChangeTimezonePage(builder *PagesBuilder) (*ChangeTimezonePage, error) {
+func NewChangeTimezonePage(builder *PagesBuilder) (Page, error) {
 	page := new(ChangeTimezonePage)
 	controllers := map[string]Controller{
 		"on_timezone": page.onTimezoneController,
@@ -697,10 +698,10 @@ func NewChangeTimezonePage(builder *PagesBuilder) (*ChangeTimezonePage, error) {
 
 func (ct *ChangeTimezonePage) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	ct.GetLogger(req.Ctx).Info("on timezone input: %s", req.Msg.Text)
-	return nil, nil
+	return nil, nil, nil
 }
 
-func NewNotFoundPage(builder *PagesBuilder) (*BasePage, error) {
+func NewNotFoundPage(builder *PagesBuilder) (Page, error) {
 	return builder.NewBasePage("not_found", nil, nil)
 }
 
@@ -708,7 +709,7 @@ type ShowReminderPage struct {
 	*BasePage
 }
 
-func NewShowReminderPage(builder *PagesBuilder) (*BasePage, error) {
+func NewShowReminderPage(builder *PagesBuilder) (Page, error) {
 	page := new(ShowReminderPage)
 	controllers := map[string]Controller{
 		core.DefaultAction: page.mainController,
@@ -727,5 +728,11 @@ func (sr *ShowReminderPage) mainController(req *core.Request) (map[string]interf
 		"date":        time.Now(),
 		"description": "ssssssss",
 	}
-	return data, nil
+	return data, nil, nil
+}
+
+func GetRegisteredPages(messenger messenger.Messenger) (map[string]Page, error) {
+	builder := NewPagesBuilder(messenger)
+	return builder.InstantiatePages(NewChangeTimezonePage, NewHomePage, NewNotFoundPage, NewReminderListPage,
+		NewShowReminderPage)
 }

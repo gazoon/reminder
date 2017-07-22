@@ -19,7 +19,7 @@ func NewIntentStrHandler(handlerStr string, words []string) (*Intent, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "incorrect intent handler url %s", handlerStr)
 	}
-	return NewIntent(handlerURL, words)
+	return NewIntent(handlerURL, words), nil
 }
 
 func (i Intent) String() string {

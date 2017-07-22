@@ -116,7 +116,7 @@ type Session struct {
 }
 
 func NewSession(chatID int) *Session {
-	sessionID := uuid.NewV4()
+	sessionID := uuid.NewV4().String()
 	return &Session{ChatID: chatID, ID: sessionID}
 }
 
@@ -223,10 +223,10 @@ func (sm SessionInMongo) String() string {
 
 func (sm *SessionInMongo) ToSession() (*Session, error) {
 	if sm.ChatID == 0 {
-		return errors.New("chat_id field doesn't present")
+		return nil, errors.New("chat_id field doesn't present")
 	}
 	if sm.SessionID == "" {
-		return errors.New("session_id field doesn't present")
+		return nil, errors.New("session_id field doesn't present")
 	}
 	model := &Session{ID: sm.SessionID, ChatID: sm.ChatID, PagesStates: sm.PagesStates, GlobalState: sm.GlobalState}
 	localIntents := make([]*Intent, len(sm.LocalIntents))
@@ -256,7 +256,7 @@ func NewSessionInMongo(session *Session) *SessionInMongo {
 	sm.SessionID = session.ID
 	sm.ChatID = session.ChatID
 	sm.InputHandler = session.InputHandler.Encode()
-	sm.PagesStates = session.LastPage.Encode()
+	sm.LastPage = session.LastPage.Encode()
 	sm.GlobalState = session.GlobalState
 	sm.PagesStates = session.PagesStates
 	sm.LocalIntents = make([]*IntentInMongo, len(session.LocalIntents))

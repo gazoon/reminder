@@ -15,6 +15,10 @@ const (
 	errorMessageText = "An internal bot error occurred."
 )
 
+var (
+	DefaultSettings = PresenterSettings{SupportGroups: false, OnlyAppealsInGroups: true}
+)
+
 type PresenterSettings struct {
 	SupportGroups       bool
 	OnlyAppealsInGroups bool
@@ -34,7 +38,7 @@ func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[s
 
 	logger := logging.NewObjectLogger("ui_presenter", nil)
 	if settings == nil {
-		settings = new(PresenterSettings)
+		settings = &DefaultSettings
 	}
 	return &UIPresenter{ObjectLogger: logger, messenger: messenger, sessionStorage: storage,
 		pageRegistry: pageRegistry, settings: settings}

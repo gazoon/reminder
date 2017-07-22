@@ -2,11 +2,11 @@
 actions:
   main:
     - set_input_handler: "on_timezone"
-    - send_text:
+    - send_text: >
         {{ if eq .params.error_msg ""}}
-        "Type your timezone (e.g. -3 or +2):"
+        Type your timezone (e.g. -3 or +2):
         {{else}}
-        "Problems with timezone: {{.params.error_msg}}. Type again:"
+        Problems with timezone: {{.params.error_msg}}. Type again:
         {{end}}
 
   on_timezone:
@@ -15,7 +15,7 @@ actions:
   changed:
     - send_text: "Timezone changed"
     - send_buttons:
-      - { text: "Home", handler: "page://home",intents:["home","root","main"] }
+      - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 
 
 

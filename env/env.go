@@ -6,6 +6,9 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"reminder/config"
+	"reminder/core"
+	"reminder/core/pages"
+	"reminder/presenter"
 )
 
 var (
@@ -30,4 +33,18 @@ func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	incomingMongoQueue, err := msgsqueue.NewMongoQueue(conf.Database, conf.User, conf.Password, conf.Host, conf.Port,
 		conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
+}
+
+func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, error) {
+	pagesRegistry, err := pages.GetRegisteredPages(messenger)
+	if err != nil {
+		return nil, errors.Wrap(err, "pages registry")
+	}
+	conf := config.GetInstance().MongoStorage
+	sessionStorage, err := core.NewMongoStorage(conf.Database, conf.User, conf.Password, conf.Host, conf.Port, conf.Timeout,
+		conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
+	if err != nil {
+		return nil, errors.Wrap(err, "mongo storage")
+	}
+	return presenter.New(messenger, sessionStorage, pagesRegistry, nil), nil
 }
