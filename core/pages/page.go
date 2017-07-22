@@ -20,18 +20,15 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"os"
+	"time"
 )
 
 const (
-	fileExtension    = ".yaml"
-	pagesFolder      = "pages"
-	evaluationMarker = "$"
-	redirectCmd      = "redirect"
-	gotoCmd          = "goto"
-)
-
-var (
-	fileContentParser func(data []byte, val interface{}) error = parseYAML
+	yamlFileExtension  = ".yaml"
+	defaultPagesFolder = "pages"
+	evaluationMarker   = "$"
+	redirectCmd        = "redirect"
+	gotoCmd            = "goto"
 )
 
 func parseYAML(data []byte, val interface{}) error {
@@ -61,31 +58,29 @@ type PageStructure struct {
 	Config  map[string]interface{}              `json:"config"`
 }
 
-type BasePage struct {
-	*logging.ObjectLogger
-	Name              string
+type PagesBuilder struct {
 	messenger         messenger.Messenger
-	globalController  Controller
-	actionControllers map[string]Controller
-
-	ParsedPage  *PageStructure
-	Intents     []*core.Intent
-	actionViews map[string][]*SequenceItem
+	fileExtension     string
+	pagesFolder       string
+	fileContentParser func(data []byte, val interface{}) error
 }
 
-func newBasePage(name string, globalController Controller, actionControllers map[string]Controller,
-	messenger messenger.Messenger) (*BasePage, error) {
+func NewPagesBuilder(messenger messenger.Messenger) *PagesBuilder {
+	return &PagesBuilder{messenger: messenger, fileExtension: yamlFileExtension, pagesFolder: defaultPagesFolder,
+		fileContentParser: parseYAML}
+}
 
+func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, actionControllers map[string]Controller) (*BasePage, error) {
 	parsedPage := new(PageStructure)
 	var actions map[string][]*SequenceItem
-	filePath := path.Join(pagesFolder, name+fileExtension)
+	filePath := path.Join(pb.pagesFolder, name+pb.fileExtension)
 	fileContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, errors.Wrap(err, "read page content")
 		}
 	} else {
-		err = fileContentParser(fileContent, parsedPage)
+		err = pb.fileContentParser(fileContent, parsedPage)
 		if err != nil {
 			return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
 		}
@@ -97,7 +92,7 @@ func newBasePage(name string, globalController Controller, actionControllers map
 	logger := logging.NewObjectLogger("pages", log.Fields{"page": name})
 
 	page := &BasePage{
-		Name: name, messenger: messenger, globalController: globalController, actionControllers: actionControllers,
+		Name: name, messenger: pb.messenger, globalController: globalController, actionControllers: actionControllers,
 		ParsedPage: parsedPage, actionViews: actions, ObjectLogger: logger,
 	}
 
@@ -106,6 +101,30 @@ func newBasePage(name string, globalController Controller, actionControllers map
 		return nil, errors.Wrap(err, "cannot build intents")
 	}
 	return page, nil
+}
+
+func (pb *PagesBuilder) InstantiatePages(pageConstructors ...func(*PagesBuilder) (Page, error)) (map[string]Page, error) {
+	registry := make(map[string]Page, len(pageConstructors))
+	for _, constructor := range pageConstructors {
+		page, err := constructor(pb)
+		if err != nil {
+			return nil, errors.Wrapf(err, "page constructor %v failed", constructor)
+		}
+		registry[page.GetName()] = page
+	}
+	return registry, nil
+}
+
+type BasePage struct {
+	*logging.ObjectLogger
+	Name              string
+	messenger         messenger.Messenger
+	globalController  Controller
+	actionControllers map[string]Controller
+
+	ParsedPage  *PageStructure
+	Intents     []*core.Intent
+	actionViews map[string][]*SequenceItem
 }
 
 func retrieveActions(parsedPage *PageStructure) (map[string][]*SequenceItem, error) {
@@ -596,13 +615,34 @@ func mergeScriptData(actionData, globalPageData, commonData map[string]interface
 	return result
 }
 
-func NewHomePage(messenger messenger.Messenger) (*BasePage, error) {
-	return newBasePage("home", nil, nil, messenger)
+func NewHomePage(builder *PagesBuilder) (*BasePage, error) {
+	return builder.NewBasePage("home", nil, nil)
 }
 
 type ReminderListPage struct {
 	*BasePage
 	PreviewTemplate string
+}
+
+func NewReminderListPage(builder *PagesBuilder) (*ReminderListPage, error) {
+	page := new(ReminderListPage)
+	controllers := map[string]Controller{
+		core.DefaultAction: page.mainAction,
+		"has_reminders":    page.fooController,
+		"no_reminders":     page.barController,
+		"on_get_or_delete": page.getOrDeleteInputHandler,
+	}
+	var err error
+	page.BasePage, err = builder.NewBasePage("reminder_list", page.globalController, controllers)
+	if err != nil {
+		return nil, err
+	}
+	previewTemplate, _ := page.ParsedPage.Config["preview_template"].(string)
+	if len(previewTemplate) == 0 {
+		return nil, errors.Errorf("config doesn't contain preview template %v", page.ParsedPage.Config)
+	}
+	page.PreviewTemplate = previewTemplate
+	return page, nil
 }
 
 func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (map[string]interface{}, *core.URL, error) {
@@ -638,21 +678,54 @@ func (rl *ReminderListPage) globalController(req *core.Request) (map[string]inte
 	return data, nil
 }
 
-func NewReminderListPage(messenger messenger.Messenger) (*ReminderListPage, error) {
-	page := new(ReminderListPage)
+type ChangeTimezonePage struct {
+	*BasePage
+}
+
+func NewChangeTimezonePage(builder *PagesBuilder) (*ChangeTimezonePage, error) {
+	page := new(ChangeTimezonePage)
 	controllers := map[string]Controller{
-		core.DefaultAction: page.mainAction,
-		"has_reminders":    page.fooController,
-		"no_reminders":     page.barController,
-		"on_get_or_delete": page.getOrDeleteInputHandler,
+		"on_timezone": page.onTimezoneController,
 	}
-	basePage, err := newBasePage("reminder_list", page.globalController, controllers, messenger)
+	var err error
+	page.BasePage, err = builder.NewBasePage("change_timezone", nil, controllers)
 	if err != nil {
 		return nil, err
 	}
-	previewTemplate, _ := basePage.ParsedPage.Config["preview_template"].(string)
-	if len(previewTemplate) == 0 {
-		return nil, errors.Errorf("config doesn't contain preview template %v", basePage.ParsedPage.Config)
+	return page, nil
+}
+
+func (ct *ChangeTimezonePage) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
+	ct.GetLogger(req.Ctx).Info("on timezone input: %s", req.Msg.Text)
+	return nil, nil
+}
+
+func NewNotFoundPage(builder *PagesBuilder) (*BasePage, error) {
+	return builder.NewBasePage("not_found", nil, nil)
+}
+
+type ShowReminderPage struct {
+	*BasePage
+}
+
+func NewShowReminderPage(builder *PagesBuilder) (*BasePage, error) {
+	page := new(ShowReminderPage)
+	controllers := map[string]Controller{
+		core.DefaultAction: page.mainController,
 	}
-	return &ReminderListPage{BasePage: basePage, PreviewTemplate: previewTemplate}, nil
+	var err error
+	page.BasePage, err = builder.NewBasePage("show_reminder", nil, controllers)
+	if err != nil {
+		return nil, err
+	}
+	return page, nil
+}
+
+func (sr *ShowReminderPage) mainController(req *core.Request) (map[string]interface{}, *core.URL, error) {
+	data := map[string]interface{}{
+		"title":       "foo",
+		"date":        time.Now(),
+		"description": "ssssssss",
+	}
+	return data, nil
 }

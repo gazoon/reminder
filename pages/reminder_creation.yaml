@@ -40,10 +40,11 @@ actions:
         "Problems with description: {{.ErrorMsg}}. Type again."
         {{end}}
     - send_buttons:
-      - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
+      - { text: "Skip", handler: "add_attachment", intents: ["skip","next"] }
+      - { text: "Done", handler: "done", intents: ["done","ready","finish"] }
 
   on_description:
-    - redirect: "enter_description"
+    - redirect: "add_attachment"
 
   add_attachment:
     - send_text:
@@ -53,17 +54,19 @@ actions:
         "Problems with attachment: {{.ErrorMsg}}. Upload again."
         {{end}}
     - send_buttons:
-      - { text: "Done", handler: "page://reminder_creation/done", intents: ["done","ready","finish"] }
+      - { text: "Done", handler: "done", intents: ["done","ready","finish"] }
 
   on_attachment:
     - redirect: "add_attachment"
 
   done:
-    - redirect: "page://finish_reminder_creation"
+    - send_text: "Reminder successfully created."
+    - send_buttons:
+      - { text: "Home", handler: "page://home", intents:["home","root","main"] }
 
   cancel:
     - redirect: "page://home"
 
 intents:
   - words: ["cancel","close","exit","escape"]
-    handler: "page://reminder_creation/cancel"
+    handler: "cancel"
