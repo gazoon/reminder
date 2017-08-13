@@ -1,8 +1,11 @@
 actions:
   main:
-    - send_text: "{{.title}}"
-    - send_text: "Remind at {{.date}}"
-    - send_text: "{{.description}}"
+    - send_text:
+      - "{{.title}}"
+      - "Remind at {{.date}}"
+    - send_text:
+      - "{{.description}}"
+
 #    - for_each:
 #        function: send_attachment
 #        values: $reminder_attachments

@@ -9,6 +9,7 @@ import (
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 var gLogger = logging.WithPackage("iterator")
@@ -68,11 +69,11 @@ func New(req *core.Request, script []*Command, messenger messenger.Messenger) *I
 }
 
 func (iter *Iterator) sendText(args interface{}) error {
-	text, ok := args.(string)
-	if !ok {
-		return errors.Errorf("called with not string arg %v", args)
+	text, err := processTextArgs(args)
+	if err != nil {
+		return err
 	}
-	_, err := iter.messenger.SendText(iter.req.Ctx, iter.req.Chat.ID, text)
+	_, err = iter.messenger.SendText(iter.req.Ctx, iter.req.Chat.ID, text)
 	return errors.Wrap(err, "messenger send text")
 }
 
@@ -81,9 +82,9 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	if !ok {
 		return errors.Errorf("called with not json object arg %v", args)
 	}
-	text, ok := params["text"].(string)
-	if !ok {
-		return errors.Errorf("expected string 'text' param, not %v", params["text"])
+	text, err := processTextArgs(params["text"])
+	if err != nil {
+		return errors.Wrap(err, "'text' param")
 	}
 	buttons, ok := params["buttons"].([]*Button)
 	if !ok {
@@ -107,7 +108,7 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	}
 	iter.logger.WithFields(log.Fields{"text": text, "buttons": messengerButtons}).
 		Info("Send text with connected buttons to the messenger")
-	_, err := iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
+	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
 	return errors.Wrap(err, "messenger send text with buttons")
 }
 
@@ -236,4 +237,21 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		}
 	}
 	return nil
+}
+
+func processTextArgs(textArgs interface{}) (string, error) {
+	lines, ok := textArgs.([]interface{})
+	if !ok {
+		lines = []interface{}{textArgs}
+	}
+	texts := make([]string, len(lines))
+	for i, line := range lines {
+		text, ok := line.(string)
+		if !ok {
+			return "", errors.Errorf("args must be a string or list of strings %v", line)
+		}
+		texts[i] = text
+	}
+	wholeText := strings.Join(texts, "\n")
+	return wholeText, nil
 }

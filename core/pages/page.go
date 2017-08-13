@@ -517,7 +517,6 @@ func computeConditionalStmts(args interface{}) (interface{}, error) {
 
 func ifStatement(item map[string]interface{}) (interface{}, error) {
 	ifArg := item["if"]
-	fmt.Println(item, ifArg, ifArg == nil, reflect.TypeOf(ifArg))
 	if ifArg == nil {
 		return nil, errors.New("if key doesn't present")
 	}

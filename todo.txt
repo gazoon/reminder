@@ -2,4 +2,3 @@
 5. add global intents
 7. add settings arg
 10. add intents enabling/disabling
-13. send multiline text in one message
