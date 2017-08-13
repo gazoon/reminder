@@ -16,6 +16,7 @@ import (
 	"os"
 	"time"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -196,7 +197,7 @@ func (bp *BasePage) GetName() string {
 }
 
 func (bp *BasePage) HandleIntent(req *core.Request) (*core.URL, error) {
-	req.Session.ResetIntents(req.Ctx)
+	bp.GetLogger(req.Ctx).Info(req.Intents)
 	return core.NotFoundPageURL, nil
 }
 
@@ -516,6 +517,7 @@ func computeConditionalStmts(args interface{}) (interface{}, error) {
 
 func ifStatement(item map[string]interface{}) (interface{}, error) {
 	ifArg := item["if"]
+	fmt.Println(item, ifArg, ifArg == nil, reflect.TypeOf(ifArg))
 	if ifArg == nil {
 		return nil, errors.New("if key doesn't present")
 	}
@@ -648,7 +650,7 @@ func NewReminderListPage(builder *PagesBuilder) (Page, error) {
 }
 
 func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	return nil, nil, nil
+	return map[string]interface{}{"deleted": false, "reminder_id": 2}, nil, nil
 }
 
 func (rl *ReminderListPage) mainAction(req *core.Request) (map[string]interface{}, *core.URL, error) {
@@ -698,7 +700,7 @@ func NewChangeTimezonePage(builder *PagesBuilder) (Page, error) {
 }
 
 func (ct *ChangeTimezonePage) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	ct.GetLogger(req.Ctx).Info("on timezone input: %s", req.Msg.Text)
+	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.Msg.Text)
 	return nil, nil, nil
 }
 

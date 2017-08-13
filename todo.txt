@@ -1,8 +1,5 @@
 4. add response type
 5. add global intents
 7. add settings arg
-8. test input handlers
-9. test session storage
 10. add intents enabling/disabling
-11. add error sending
-12. objects logging
+13. send multiline text in one message

@@ -12,12 +12,12 @@ var (
 )
 
 type ServiceConfig struct {
-	config.BaseConfig
-	MongoMessages   *config.MongoQueue       `json:"mongo_messages"`
-	MongoStorage    *config.MongoDBSettings  `json:"mongo_storage"`
-	Telegram        *config.TelegramSettings `json:"telegram"`
-	TelegramPolling *config.TelegramPolling  `json:"telegram_polling"`
-	Logging         *config.Logging          `json:"logging"`
+	config.BaseConfig `mapstructure:",squash" json:",inline"`
+	MongoMessages     *config.MongoQueue       `mapstructure:"mongo_messages" json:"mongo_messages"`
+	MongoStorage      *config.MongoDBSettings  `mapstructure:"mongo_storage" json:"mongo_storage"`
+	Telegram          *config.TelegramSettings `mapstructure:"telegram" json:"telegram"`
+	TelegramPolling   *config.TelegramPolling  `mapstructure:"telegram_polling" json:"telegram_polling"`
+	Logging           *config.Logging          `mapstructure:"logging" json:"logging"`
 }
 
 func Initialization(configPath string) {

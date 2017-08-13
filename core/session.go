@@ -43,6 +43,9 @@ func NewURL(page, action string, params map[string]string) *URL {
 }
 
 func NewURLFromStr(rawurl string) (*URL, error) {
+	if rawurl == "" {
+		return nil, errors.New("empty url string")
+	}
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, errors.Wrap(err, "url parsing")
@@ -90,9 +93,10 @@ type Request struct {
 	Chat    *msgsqueue.Chat
 	User    *msgsqueue.User
 	URL     *URL
+	Intents []*Intent
 }
 
-func NewRequest(ctx context.Context, msg *msgsqueue.Message) *Request {
+func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *Request {
 	reqURL, err := NewURLFromStr(msg.Text)
 	if err != nil {
 		reqURL = nil
@@ -100,11 +104,8 @@ func NewRequest(ctx context.Context, msg *msgsqueue.Message) *Request {
 	if reqURL.IsRelative() {
 		reqURL = nil
 	}
-	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From}
-}
-
-func (r *Request) URLFromMsgText() *URL {
-	return u
+	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From, URL: reqURL, Session: session,
+		Intents: session.LocalIntents}
 }
 
 type Session struct {
@@ -143,16 +144,14 @@ func (s *Session) ResetInputHandler(ctx context.Context) {
 }
 
 func (s *Session) ResetIntents(ctx context.Context) {
-	if s.LocalIntents != nil {
-		logger := logging.FromContextAndBase(ctx, gLogger)
-		logger.Infof("Reset local intents %v", s.LocalIntents)
-		s.LocalIntents = nil
-	}
+	logger := logging.FromContextAndBase(ctx, gLogger)
+	logger.Infof("Reset local intents %v", s.LocalIntents)
+	s.LocalIntents = nil
 }
 
 func (s *Session) SetLastPage(ctx context.Context, newLastPage *URL) {
 	logger := logging.FromContextAndBase(ctx, gLogger)
-	logger.Infof("Change last page %s ---> %s", s.LastPage, newLastPage)
+	logger.Infof("Change last page %s ---> %s", s.LastPage.Encode(), newLastPage.Encode())
 	s.LastPage = newLastPage
 }
 
@@ -289,9 +288,13 @@ func (sm *SessionInMongo) ToSession() (*Session, error) {
 		}
 		localIntents[i] = intent
 	}
-	inputHandlerURL, err := NewURLFromStr(sm.InputHandler)
-	if err != nil {
-		return nil, errors.Wrap(err, "storage contains bad input handler")
+	var inputHandlerURL *URL
+	if sm.InputHandler != "" {
+		var err error
+		inputHandlerURL, err = NewURLFromStr(sm.InputHandler)
+		if err != nil {
+			return nil, errors.Wrap(err, "storage contains bad input handler")
+		}
 	}
 	lastPageURL, err := NewURLFromStr(sm.LastPage)
 	if err != nil {

@@ -16,10 +16,10 @@ const (
 )
 
 var (
-	DefaultSettings = PresenterSettings{SupportGroups: false, OnlyAppealsInGroups: true}
+	DefaultSettings = Settings{SupportGroups: false, OnlyAppealsInGroups: true}
 )
 
-type PresenterSettings struct {
+type Settings struct {
 	SupportGroups       bool
 	OnlyAppealsInGroups bool
 }
@@ -30,11 +30,11 @@ type UIPresenter struct {
 	sessionStorage core.Storage
 	pageRegistry   map[string]pages.Page
 	//globalIntents []*core.Intent
-	settings *PresenterSettings
+	settings *Settings
 }
 
 func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[string]pages.Page,
-	settings *PresenterSettings) *UIPresenter {
+	settings *Settings) *UIPresenter {
 
 	logger := logging.NewObjectLogger("ui_presenter", nil)
 	if settings == nil {
@@ -48,33 +48,30 @@ func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
 	if uip.needSkip(ctx, msg) {
 		return
 	}
-	req := core.NewRequest(ctx, msg)
-	ok := uip.dispatchRequest(req)
+	ok := uip.handleMessage(ctx, msg)
 	if !ok {
-		uip.sendError(req)
+		uip.sendError(ctx, msg)
 	}
 }
 
 func (uip *UIPresenter) handleMessage(ctx context.Context, msg *msgsqueue.Message) bool {
 	logger := uip.GetLogger(ctx)
-	session, err := uip.getOrCreateSession(ctx,msg)
+	session, err := uip.getOrCreateSession(ctx, msg)
 	if err != nil {
 		logger.Errorf("Cannot init chat session: %s", err)
 		return false
 	}
-	req := core.NewRequest(ctx, msg,session)
+	req := core.NewRequest(ctx, msg, session)
+	ok := uip.dispatchRequest(req)
+	if !ok {
+		return false
+	}
+	return uip.saveSession(req)
 }
-
 
 func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 	logger := uip.GetLogger(req.Ctx)
-	var err error
-	req.Session, err = uip.getOrCreateSession(req)
-	if err != nil {
-		logger.Errorf("Cannot init chat session: %s", err)
-		return false
-	}
-	req.URL = req.URLFromMsgText()
+	req.Session.ResetIntents(req.Ctx)
 	if req.URL != nil {
 		logger.Infof("Request url %s from the message text", req.URL.Encode())
 		req.Session.ResetInputHandler(req.Ctx)
@@ -114,7 +111,7 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 		req.URL = nextURL
 	}
 	logger.Info("Pages iteration is successfully over")
-	return uip.saveSession(req)
+	return true
 }
 
 func (uip *UIPresenter) saveSession(req *core.Request) bool {
@@ -128,7 +125,7 @@ func (uip *UIPresenter) saveSession(req *core.Request) bool {
 	return true
 }
 
-func (uip *UIPresenter) getOrCreateSession(ctx context.Context,msg *msgsqueue.Message) (*core.Session, error) {
+func (uip *UIPresenter) getOrCreateSession(ctx context.Context, msg *msgsqueue.Message) (*core.Session, error) {
 	session, err := uip.sessionStorage.Get(ctx, msg.Chat.ID)
 	if err != nil {
 		return nil, errors.Wrap(err, "storage get")
@@ -146,10 +143,10 @@ func (uip *UIPresenter) getOrCreateSession(ctx context.Context,msg *msgsqueue.Me
 	return session, nil
 }
 
-func (uip *UIPresenter) sendError(req *core.Request) {
-	logger := uip.GetLogger(req.Ctx)
-	logger.WithField("chat_id", req.Chat.ID).Info("Sending error msg to the chat")
-	_, err := uip.messenger.SendText(req.Ctx, req.Chat.ID, errorMessageText)
+func (uip *UIPresenter) sendError(ctx context.Context, msg *msgsqueue.Message) {
+	logger := uip.GetLogger(ctx)
+	logger.WithField("chat_id", msg.Chat.ID).Info("Sending error msg to the chat")
+	_, err := uip.messenger.SendText(ctx, msg.Chat.ID, errorMessageText)
 	if err != nil {
 		logger.Errorf("Cannot send error msg: %s", err)
 		return

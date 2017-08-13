@@ -30,6 +30,8 @@ func CreateTelegramMessenger() (messenger.Messenger, error) {
 
 func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	conf := config.GetInstance().MongoMessages
+	c := config.GetInstance()
+	gLogger.Info(c.MongoMessages)
 	incomingMongoQueue, err := msgsqueue.NewMongoQueue(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
 		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
