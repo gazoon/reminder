@@ -4,12 +4,13 @@ import (
 	"reminder/env"
 
 	"flag"
+	"reminder/config"
+
 	"github.com/gazoon/bot_libs/gateway"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/gazoon/bot_libs/utils"
 	"github.com/pkg/errors"
-	"reminder/config"
 )
 
 var (

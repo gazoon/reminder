@@ -1,4 +1,3 @@
-
 actions:
   main:
     - set_input_handler: "on_timezone"
@@ -17,7 +16,7 @@ actions:
     - send_buttons:
       - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 
-
+entry_action: main
 
 
 

@@ -12,12 +12,9 @@ type ReminderListPage struct {
 	PreviewTemplate string
 }
 
-func NewReminderListPage(builder *page.PagesBuilder) (page.Page, error) {
+func NewReminderList(builder *page.PagesBuilder) (page.Page, error) {
 	p := new(ReminderListPage)
 	controllers := map[string]page.Controller{
-		core.DefaultAction: p.mainAction,
-		"has_reminders":    p.fooController,
-		"no_reminders":     p.barController,
 		"on_get_or_delete": p.getOrDeleteInputHandler,
 	}
 	var err error
@@ -37,30 +34,9 @@ func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (map[stri
 	return map[string]interface{}{"deleted": false, "reminder_id": 2}, nil, nil
 }
 
-func (rl *ReminderListPage) mainAction(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"has_reminders": true,
-		"foo":           map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
-	}
-	return data, nil, nil
-}
-
-func (rl *ReminderListPage) fooController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"foo": "foo",
-	}
-	return data, nil, nil
-}
-
-func (rl *ReminderListPage) barController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"foo": "bar",
-	}
-	return data, nil, nil
-}
-
 func (rl *ReminderListPage) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	data := map[string]interface{}{
+		"no_reminders":      false,
 		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
 	}
 	return data, nil, nil

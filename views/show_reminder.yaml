@@ -1,5 +1,5 @@
 actions:
-  main:
+  show:
     - send_text:
       - "{{.title}}"
       - "Remind at {{.date}}"
@@ -12,3 +12,4 @@ actions:
     - send_buttons:
       - { text: "All reminders", handler: "page://reminder_list", intents: ["list","show","catalog"] }
 
+entry_action: show

@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	DefaultAction = "main"
 	urlScheme     = "page"
 )
 
@@ -33,9 +32,6 @@ type URL struct {
 }
 
 func NewURL(page, action string, params map[string]string) *URL {
-	if action == "" {
-		action = DefaultAction
-	}
 	if params == nil {
 		params = make(map[string]string)
 	}

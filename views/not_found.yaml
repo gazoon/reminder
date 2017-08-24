@@ -1,5 +1,7 @@
 actions:
-  main:
+  not_found:
     - send_text: "I don't understand you, sorry."
     - send_buttons:
       - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
+
+entry_action: not_found

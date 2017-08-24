@@ -3,7 +3,7 @@ package presenter
 import (
 	"context"
 	"reminder/core"
-	"reminder/core/pages"
+	"reminder/core/page"
 
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -96,15 +96,15 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 		logger.Infof("Request url %s from intent handling", req.URL.Encode())
 	}
 	for req.URL != nil {
-		page, err := uip.getPage(req.URL)
+		pg, err := uip.getPage(req.URL)
 		if err != nil {
 			logger.Errorf("Cannot get page during request iteration: %s", err)
 			return false
 		}
 		logger.Infof("Enter %s", req.URL.Encode())
-		nextURL, err := page.Enter(req)
+		nextURL, err := pg.Enter(req)
 		if err != nil {
-			logger.Errorf("Page %s failed: %s", page.GetName(), err)
+			logger.Errorf("Page %s failed: %s", pg.GetName(), err)
 			return false
 		}
 		req.Session.SetLastPage(req.Ctx, req.URL)
@@ -154,11 +154,11 @@ func (uip *UIPresenter) sendError(ctx context.Context, msg *msgsqueue.Message) {
 }
 
 func (uip *UIPresenter) getPage(pageURL *core.URL) (page.Page, error) {
-	page, ok := uip.pageRegistry[pageURL.Page]
+	pg, ok := uip.pageRegistry[pageURL.Page]
 	if !ok {
 		return nil, errors.Errorf("url %s leads to not known page %s", pageURL.Encode(), pageURL.Page)
 	}
-	return page, nil
+	return pg, nil
 }
 
 func (uip *UIPresenter) needSkip(ctx context.Context, msg *msgsqueue.Message) bool {

@@ -1,7 +1,9 @@
 actions:
-  main:
+  greeting:
     - send_text: "Hi! What do you want to do?"
     - send_buttons:
       - { text: "Create", handler: "page://reminder_creation", intents: ["create","new","add"] }
       - { text: "List", handler: "page://reminder_list", intents: ["list","show","catalog"] }
       - { text: "Change timezone", handler: "page://change_timezone"}
+
+entry_action: greeting

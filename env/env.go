@@ -1,14 +1,20 @@
 package env
 
 import (
+	"reminder/config"
+	"reminder/core"
+	"reminder/core/page"
+	"reminder/core/presenter"
+
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
-	"reminder/config"
-	"reminder/core"
-	"reminder/core/pages"
-	"reminder/presenter"
+	"reminder/pages"
+)
+
+const (
+	pageViewsFolder = "views"
 )
 
 var (
@@ -38,7 +44,9 @@ func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 }
 
 func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, error) {
-	pagesRegistry, err := page.GetRegisteredPages(messenger)
+	builder := page.NewPagesBuilder(messenger, pageViewsFolder)
+	pagesRegistry, err := builder.InstantiatePages(pages.NewChangeTimezone, pages.NewHome, pages.NewNotFound, pages.NewReminderList,
+		pages.NewShowReminder)
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")
 	}

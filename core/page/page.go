@@ -13,9 +13,6 @@ import (
 
 	"reflect"
 
-	"os"
-	"time"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -27,7 +24,7 @@ import (
 
 const (
 	yamlFileExtension  = ".yaml"
-	defaultPagesFolder = "pages"
+	DefaultPagesFolder = "pages"
 	evaluationMarker   = "$"
 	redirectCmd        = "redirect"
 	gotoCmd            = "goto"
@@ -68,9 +65,9 @@ type PagesBuilder struct {
 	fileContentParser func(data []byte, val interface{}) error
 }
 
-func NewPagesBuilder(messenger messenger.Messenger) *PagesBuilder {
-	return &PagesBuilder{messenger: messenger, fileExtension: yamlFileExtension, pagesFolder: defaultPagesFolder,
-		fileContentParser: parseYAML}
+func NewPagesBuilder(messenger messenger.Messenger,folder string) *PagesBuilder {
+	return &PagesBuilder{messenger: messenger, fileExtension: yamlFileExtension, pagesFolder: folder,
+		fileContentParser:          parseYAML}
 }
 
 func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, actionControllers map[string]Controller) (*BasePage, error) {
@@ -79,18 +76,15 @@ func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, ac
 	filePath := path.Join(pb.pagesFolder, name+pb.fileExtension)
 	fileContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, errors.Wrap(err, "read page content")
-		}
-	} else {
-		err = pb.fileContentParser(fileContent, parsedPage)
-		if err != nil {
-			return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
-		}
-		actionViews, err = retrieveActions(parsedPage)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot retrieve actions")
-		}
+		return nil, errors.Wrap(err, "read page content")
+	}
+	err = pb.fileContentParser(fileContent, parsedPage)
+	if err != nil {
+		return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
+	}
+	actionViews, err = retrieveActions(parsedPage)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot retrieve actions")
 	}
 	if _, viewExists := actionViews[parsedPage.EntryAction]; !viewExists {
 		if _, controllerExists := actionControllers[parsedPage.EntryAction]; !controllerExists {
@@ -180,12 +174,13 @@ func (bp *BasePage) Enter(req *core.Request) (*core.URL, error) {
 		}
 	}
 	var actionData map[string]interface{}
-	if controller, ok := bp.actionControllers[req.URL.Action]; ok {
+	action := bp.GetRequestAction(req)
+	if controller, ok := bp.actionControllers[action]; ok {
 		var err error
 		var redirectURI *core.URL
 		actionData, redirectURI, err = controller(req)
 		if err != nil {
-			return nil, errors.Wrapf(err, "controller %s failed", req.URL.Action)
+			return nil, errors.Wrapf(err, "controller %s failed", action)
 		}
 		if redirectURI != nil {
 			bp.GetLogger(req.Ctx).Info("Action controller returns uri: %s", redirectURI.Encode())
@@ -273,7 +268,7 @@ func (bp *BasePage) getCommonScriptData(req *core.Request) map[string]interface{
 }
 
 func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{}) (*core.URL, error) {
-	actionName := req.URL.Action
+	actionName := bp.GetRequestAction(req)
 	nextAction, ok := bp.actionViews[actionName]
 	if !ok {
 		return nil, errors.Errorf("there is no action view for %s", actionName)
@@ -433,8 +428,9 @@ func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command)
 
 func (bp *BasePage) GetRequestAction(req *core.Request) string {
 	if req.URL.Action != "" {
-
+		return req.URL.Action
 	}
+	return bp.entryAction
 }
 
 func evaluateArgs(args interface{}, scriptData map[string]interface{}) (interface{}, error) {
@@ -627,62 +623,4 @@ func mergeScriptData(actionData, globalPageData, commonData map[string]interface
 		result[k] = v
 	}
 	return result
-}
-
-type ChangeTimezonePage struct {
-	*BasePage
-}
-
-func NewChangeTimezonePage(builder *PagesBuilder) (Page, error) {
-	page := new(ChangeTimezonePage)
-	controllers := map[string]Controller{
-		"on_timezone": page.onTimezoneController,
-	}
-	var err error
-	page.BasePage, err = builder.NewBasePage("change_timezone", nil, controllers)
-	if err != nil {
-		return nil, err
-	}
-	return page, nil
-}
-
-func (ct *ChangeTimezonePage) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.Msg.Text)
-	return nil, nil, nil
-}
-
-func NewNotFoundPage(builder *PagesBuilder) (Page, error) {
-	return builder.NewBasePage("not_found", nil, nil)
-}
-
-type ShowReminderPage struct {
-	*BasePage
-}
-
-func NewShowReminderPage(builder *PagesBuilder) (Page, error) {
-	page := new(ShowReminderPage)
-	controllers := map[string]Controller{
-		core.DefaultAction: page.mainController,
-	}
-	var err error
-	page.BasePage, err = builder.NewBasePage("show_reminder", nil, controllers)
-	if err != nil {
-		return nil, err
-	}
-	return page, nil
-}
-
-func (sr *ShowReminderPage) mainController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"title":       "foo",
-		"date":        time.Now(),
-		"description": "ssssssss",
-	}
-	return data, nil, nil
-}
-
-func GetRegisteredPages(messenger messenger.Messenger) (map[string]Page, error) {
-	builder := NewPagesBuilder(messenger)
-	return builder.InstantiatePages(NewChangeTimezonePage, NewHomePage, NewNotFoundPage, NewReminderListPage,
-		NewShowReminderPage)
 }
