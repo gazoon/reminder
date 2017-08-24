@@ -28,12 +28,12 @@ type UIPresenter struct {
 	*logging.ObjectLogger
 	messenger      messenger.Messenger
 	sessionStorage core.Storage
-	pageRegistry   map[string]pages.Page
+	pageRegistry   map[string]page.Page
 	//globalIntents []*core.Intent
 	settings *Settings
 }
 
-func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[string]pages.Page,
+func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[string]page.Page,
 	settings *Settings) *UIPresenter {
 
 	logger := logging.NewObjectLogger("ui_presenter", nil)
@@ -153,7 +153,7 @@ func (uip *UIPresenter) sendError(ctx context.Context, msg *msgsqueue.Message) {
 	}
 }
 
-func (uip *UIPresenter) getPage(pageURL *core.URL) (pages.Page, error) {
+func (uip *UIPresenter) getPage(pageURL *core.URL) (page.Page, error) {
 	page, ok := uip.pageRegistry[pageURL.Page]
 	if !ok {
 		return nil, errors.Errorf("url %s leads to not known page %s", pageURL.Encode(), pageURL.Page)

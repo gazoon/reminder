@@ -1,4 +1,4 @@
-package pages
+package page
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	"os"
 	"time"
 
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -57,8 +56,9 @@ type PageStructure struct {
 		HandlerURLStr string   `json:"handler"`
 		Words         []string `json:"words"`
 	} `json:"intents"`
-	Actions map[string][]map[string]interface{} `json:"actions"`
-	Config  map[string]interface{}              `json:"config"`
+	Actions     map[string][]map[string]interface{} `json:"actions"`
+	Config      map[string]interface{}              `json:"config"`
+	EntryAction string                              `json:"entry_action"`
 }
 
 type PagesBuilder struct {
@@ -75,7 +75,7 @@ func NewPagesBuilder(messenger messenger.Messenger) *PagesBuilder {
 
 func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, actionControllers map[string]Controller) (*BasePage, error) {
 	parsedPage := new(PageStructure)
-	var actions map[string][]*SequenceItem
+	var actionViews map[string][]*SequenceItem
 	filePath := path.Join(pb.pagesFolder, name+pb.fileExtension)
 	fileContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -87,16 +87,21 @@ func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, ac
 		if err != nil {
 			return nil, errors.Wrapf(err, "content parsing failed, file=%s", filePath)
 		}
-		actions, err = retrieveActions(parsedPage)
+		actionViews, err = retrieveActions(parsedPage)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot retrieve actions")
+		}
+	}
+	if _, viewExists := actionViews[parsedPage.EntryAction]; !viewExists {
+		if _, controllerExists := actionControllers[parsedPage.EntryAction]; !controllerExists {
+			return nil, errors.Errorf("entry action %s not found in page views or controllers", parsedPage.EntryAction)
 		}
 	}
 	logger := logging.NewObjectLogger("pages", log.Fields{"page": name})
 
 	page := &BasePage{
 		Name: name, messenger: pb.messenger, globalController: globalController, actionControllers: actionControllers,
-		ParsedPage: parsedPage, actionViews: actions, ObjectLogger: logger,
+		ParsedPage: parsedPage, actionViews: actionViews, ObjectLogger: logger, entryAction: parsedPage.EntryAction,
 	}
 
 	page.Intents, err = page.buildIntents()
@@ -128,6 +133,7 @@ type BasePage struct {
 	ParsedPage  *PageStructure
 	Intents     []*core.Intent
 	actionViews map[string][]*SequenceItem
+	entryAction string
 }
 
 func retrieveActions(parsedPage *PageStructure) (map[string][]*SequenceItem, error) {
@@ -201,7 +207,7 @@ func (bp *BasePage) HandleIntent(req *core.Request) (*core.URL, error) {
 	return core.NotFoundPageURL, nil
 }
 
-func (bp *BasePage) actionNames() []string {
+func (bp *BasePage) ActionViews() []string {
 	names := make([]string, 0, len(bp.actionViews))
 	for k := range bp.actionViews {
 		names = append(names, k)
@@ -236,11 +242,11 @@ func (bp *BasePage) buildIntents() ([]*core.Intent, error) {
 	return intents, nil
 }
 
-func (bp *BasePage) getState(req *core.Request) map[string]interface{} {
+func (bp *BasePage) GetState(req *core.Request) map[string]interface{} {
 	return req.Session.PagesStates[bp.Name]
 }
 
-func (bp *BasePage) updateState(req *core.Request, key string, value interface{}) {
+func (bp *BasePage) UpdateState(req *core.Request, key string, value interface{}) {
 	state, ok := req.Session.PagesStates[bp.Name]
 	if !ok {
 		state = make(map[string]interface{})
@@ -248,11 +254,11 @@ func (bp *BasePage) updateState(req *core.Request, key string, value interface{}
 	state[key] = value
 }
 
-func (bp *BasePage) clearState(req *core.Request) {
+func (bp *BasePage) ClearState(req *core.Request) {
 	delete(req.Session.PagesStates, bp.Name)
 }
 
-func (bp *BasePage) setState(req *core.Request, state map[string]interface{}) {
+func (bp *BasePage) SetState(req *core.Request, state map[string]interface{}) {
 	req.Session.PagesStates[bp.Name] = state
 }
 
@@ -270,8 +276,7 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 	actionName := req.URL.Action
 	nextAction, ok := bp.actionViews[actionName]
 	if !ok {
-		bp.GetLogger(req.Ctx).Infof("There is no action view for %s", actionName)
-		return nil, nil
+		return nil, errors.Errorf("there is no action view for %s", actionName)
 	}
 	visitedActions := map[string]bool{actionName: true}
 	var script []*iterator.Command
@@ -298,17 +303,17 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 				if cmd.Args == nil {
 					continue
 				}
-				actionName, ok := cmd.Args.(string)
+				gotoAction, ok := cmd.Args.(string)
 				if !ok {
 					return nil, errors.Errorf("goto argument must be a string, not %v", cmd.Args)
 				}
-				if isVisited := visitedActions[actionName]; isVisited {
-					return nil, errors.Errorf("actions cycle, already visited action %s", actionName)
+				if isVisited := visitedActions[gotoAction]; isVisited {
+					return nil, errors.Errorf("actions cycle, already visited action %s", gotoAction)
 				}
-				visitedActions[actionName] = true
-				nextAction, ok = bp.actionViews[actionName]
+				visitedActions[gotoAction] = true
+				nextAction, ok = bp.actionViews[gotoAction]
 				if !ok {
-					return nil, errors.Errorf("goto to unexisting page action %s, actions=%v", actionName, bp.actionNames())
+					return nil, errors.Errorf("goto to nonexistent page action %s, actions=%v", gotoAction, bp.ActionViews())
 				}
 				break
 			} else if cmd.Name == redirectCmd {
@@ -424,6 +429,12 @@ func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command)
 	iter := iterator.New(req, script, bp.messenger)
 	err := iter.Run()
 	return errors.Wrap(err, "script iteration falied")
+}
+
+func (bp *BasePage) GetRequestAction(req *core.Request) string {
+	if req.URL.Action != "" {
+
+	}
 }
 
 func evaluateArgs(args interface{}, scriptData map[string]interface{}) (interface{}, error) {
@@ -616,69 +627,6 @@ func mergeScriptData(actionData, globalPageData, commonData map[string]interface
 		result[k] = v
 	}
 	return result
-}
-
-func NewHomePage(builder *PagesBuilder) (Page, error) {
-	return builder.NewBasePage("home", nil, nil)
-}
-
-type ReminderListPage struct {
-	*BasePage
-	PreviewTemplate string
-}
-
-func NewReminderListPage(builder *PagesBuilder) (Page, error) {
-	page := new(ReminderListPage)
-	controllers := map[string]Controller{
-		core.DefaultAction: page.mainAction,
-		"has_reminders":    page.fooController,
-		"no_reminders":     page.barController,
-		"on_get_or_delete": page.getOrDeleteInputHandler,
-	}
-	var err error
-	page.BasePage, err = builder.NewBasePage("reminder_list", page.globalController, controllers)
-	if err != nil {
-		return nil, err
-	}
-	previewTemplate, _ := page.ParsedPage.Config["preview_template"].(string)
-	if len(previewTemplate) == 0 {
-		return nil, errors.Errorf("config doesn't contain preview template %v", page.ParsedPage.Config)
-	}
-	page.PreviewTemplate = previewTemplate
-	return page, nil
-}
-
-func (rl *ReminderListPage) getOrDeleteInputHandler(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	return map[string]interface{}{"deleted": false, "reminder_id": 2}, nil, nil
-}
-
-func (rl *ReminderListPage) mainAction(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"has_reminders": true,
-		"foo":           map[string]interface{}{"bar": []interface{}{2, 3, "4"}},
-	}
-	return data, nil, nil
-}
-
-func (rl *ReminderListPage) fooController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"foo": "foo",
-	}
-	return data, nil, nil
-}
-
-func (rl *ReminderListPage) barController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"foo": "bar",
-	}
-	return data, nil, nil
-}
-
-func (rl *ReminderListPage) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	data := map[string]interface{}{
-		"reminder_previews": []interface{}{"foo", "bbbbbb", "222"},
-	}
-	return data, nil, nil
 }
 
 type ChangeTimezonePage struct {

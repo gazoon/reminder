@@ -1,8 +1,7 @@
 actions:
-  main:
-    - goto: { if: "{{ .has_reminders }}", then: has_reminders,  else: no_reminders }
+  reminders:
+    - goto: { if: "{{ .no_reminders }}", then: no_reminders }
 
-  has_reminders:
     - send_text: "List of your reminders:"
     - foreach:
         function: send_text
@@ -10,13 +9,15 @@ actions:
     - set_input_handler: "on_get_or_delete"
     - send_text: "Type: {reminder_number} delete/show\nTo delete or show details of particular reminder."
 
+  on_get_or_delete:
+    - redirect: { if: "{{ .deleted }}", then: "main", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
+
   no_reminders:
     - send_text: "You don't have any reminders yet. You could create one."
     - send_buttons:
       - { text: "Create", handler: "page://reminder_creation", intents: ["create","new","add"] }
 
-  on_get_or_delete:
-    - redirect: { if: "{{ .deleted }}", then: "main", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
+entry_action: reminders
 
 config:
   preview_template: "1. %.30s"

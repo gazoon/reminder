@@ -38,7 +38,7 @@ func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 }
 
 func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, error) {
-	pagesRegistry, err := pages.GetRegisteredPages(messenger)
+	pagesRegistry, err := page.GetRegisteredPages(messenger)
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")
 	}
