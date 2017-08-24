@@ -2,3 +2,4 @@
 5. add global intents
 7. add settings arg
 10. add intents enabling/disabling
+11. add attachment support
