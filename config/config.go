@@ -14,7 +14,8 @@ var (
 type ServiceConfig struct {
 	config.BaseConfig `mapstructure:",squash" json:",inline"`
 	MongoMessages     *config.MongoQueue       `mapstructure:"mongo_messages" json:"mongo_messages"`
-	MongoStorage      *config.MongoDBSettings  `mapstructure:"mongo_storage" json:"mongo_storage"`
+	MongoSessions     *config.MongoDBSettings  `mapstructure:"mongo_sessions" json:"mongo_sessions"`
+	MongoReminders    *config.MongoDBSettings  `mapstructure:"mongo_reminders" json:"mongo_reminders"`
 	Telegram          *config.TelegramSettings `mapstructure:"telegram" json:"telegram"`
 	TelegramPolling   *config.TelegramPolling  `mapstructure:"telegram_polling" json:"telegram_polling"`
 	Logging           *config.Logging          `mapstructure:"logging" json:"logging"`

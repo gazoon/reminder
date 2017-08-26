@@ -11,6 +11,7 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"reminder/pages"
+	"reminder/reminders"
 )
 
 const (
@@ -36,21 +37,26 @@ func CreateTelegramMessenger() (messenger.Messenger, error) {
 
 func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	conf := config.GetInstance().MongoMessages
-	c := config.GetInstance()
-	gLogger.Info(c.MongoMessages)
 	incomingMongoQueue, err := msgsqueue.NewMongoQueue(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
 		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
 }
 
+func CreateMongoReminderStorage() (reminders.Storage, error) {
+	conf := config.GetInstance().MongoReminders
+	storage, err := reminders.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
+		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
+	return storage, errors.Wrap(err, "mongo reminders storage")
+}
+
 func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, error) {
 	builder := page.NewPagesBuilder(messenger, pageViewsFolder)
-	pagesRegistry, err := builder.InstantiatePages(pages.NewChangeTimezone, pages.NewHome, pages.NewNotFound, pages.NewReminderList,
-		pages.NewShowReminder)
+	pagesRegistry, err := builder.InstantiatePages(&pages.ChangeTimezone{}, &pages.Home{}, &pages.NotFound{}, &pages.ReminderList{},
+		&pages.ShowReminder{})
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")
 	}
-	conf := config.GetInstance().MongoStorage
+	conf := config.GetInstance().MongoSessions
 	sessionStorage, err := core.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
 		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
 	if err != nil {

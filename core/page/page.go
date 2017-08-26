@@ -16,7 +16,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
-	"github.com/gazoon/bot_libs/utils"
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -37,6 +36,7 @@ func parseYAML(data []byte, val interface{}) error {
 
 type Page interface {
 	GetName() string
+	Init(builder *PagesBuilder) error
 	HandleIntent(req *core.Request) (*core.URL, error)
 	Enter(req *core.Request) (*core.URL, error)
 }
@@ -65,9 +65,9 @@ type PagesBuilder struct {
 	fileContentParser func(data []byte, val interface{}) error
 }
 
-func NewPagesBuilder(messenger messenger.Messenger,folder string) *PagesBuilder {
+func NewPagesBuilder(messenger messenger.Messenger, folder string) *PagesBuilder {
 	return &PagesBuilder{messenger: messenger, fileExtension: yamlFileExtension, pagesFolder: folder,
-		fileContentParser:          parseYAML}
+		fileContentParser: parseYAML}
 }
 
 func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, actionControllers map[string]Controller) (*BasePage, error) {
@@ -105,14 +105,14 @@ func (pb *PagesBuilder) NewBasePage(name string, globalController Controller, ac
 	return page, nil
 }
 
-func (pb *PagesBuilder) InstantiatePages(pageConstructors ...func(*PagesBuilder) (Page, error)) (map[string]Page, error) {
-	registry := make(map[string]Page, len(pageConstructors))
-	for _, constructor := range pageConstructors {
-		page, err := constructor(pb)
+func (pb *PagesBuilder) InstantiatePages(pages ...Page) (map[string]Page, error) {
+	registry := make(map[string]Page, len(pages))
+	for _, p := range pages {
+		err := p.Init(pb)
 		if err != nil {
-			return nil, errors.Wrapf(err, "page constructor %s failed", utils.FunctionName(constructor))
+			return nil, errors.Wrapf(err, "page %s initialization failed", reflect.TypeOf(p))
 		}
-		registry[page.GetName()] = page
+		registry[p.GetName()] = p
 	}
 	return registry, nil
 }

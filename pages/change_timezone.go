@@ -5,24 +5,20 @@ import (
 	"reminder/core/page"
 )
 
-type ChangeTimezonePage struct {
+type ChangeTimezone struct {
 	*page.BasePage
 }
 
-func NewChangeTimezone(builder *page.PagesBuilder) (page.Page, error) {
-	p := new(ChangeTimezonePage)
+func (ct *ChangeTimezone) Init(builder *page.PagesBuilder) error {
 	controllers := map[string]page.Controller{
-		"on_timezone": p.onTimezoneController,
+		"on_timezone": ct.onTimezoneController,
 	}
 	var err error
-	p.BasePage, err = builder.NewBasePage("change_timezone", nil, controllers)
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
+	ct.BasePage, err = builder.NewBasePage("change_timezone", nil, controllers)
+	return err
 }
 
-func (ct *ChangeTimezonePage) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
+func (ct *ChangeTimezone) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.Msg.Text)
 	return nil, nil, nil
 }

@@ -4,6 +4,12 @@ import (
 	"reminder/core/page"
 )
 
-func NewHome(builder *page.PagesBuilder) (page.Page, error) {
-	return builder.NewBasePage("home", nil, nil)
+type Home struct {
+	*page.BasePage
+}
+
+func (h *Home) Init(builder *page.PagesBuilder) error {
+	var err error
+	h.BasePage, err = builder.NewBasePage("home", nil, nil)
+	return err
 }

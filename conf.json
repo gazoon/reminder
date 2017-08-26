@@ -23,9 +23,21 @@
     "fetch_delay": 500,
     "workers_num": 10
   },
-  "mongo_storage": {
+  "mongo_sessions": {
     "database": "local",
     "collection": "session_storage",
+    "host": "localhost",
+    "port": 27017,
+    "user": "",
+    "password": "",
+    "timeout": 1,
+    "pool_size": 10,
+    "retries_num": 3,
+    "retries_interval": 500
+  },
+  "mongo_reminders": {
+    "database": "local",
+    "collection": "reminders_storage",
     "host": "localhost",
     "port": 27017,
     "user": "",

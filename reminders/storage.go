@@ -22,7 +22,7 @@ func init() {
 
 type Storage interface {
 	List(ctx context.Context, chatID int) ([]*models.Reminder, error)
-	Get(ctx context.Context, reminderID int) (*models.Reminder, error)
+	Get(ctx context.Context, reminderID string) (*models.Reminder, error)
 	Save(ctx context.Context, reminder *models.Reminder) error
 }
 

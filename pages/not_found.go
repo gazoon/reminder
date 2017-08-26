@@ -4,6 +4,12 @@ import (
 	"reminder/core/page"
 )
 
-func NewNotFound(builder *page.PagesBuilder) (page.Page, error) {
-	return builder.NewBasePage("not_found", nil, nil)
+type NotFound struct {
+	*page.BasePage
+}
+
+func (nf *NotFound) Init(builder *page.PagesBuilder) error {
+	var err error
+	nf.BasePage, err = builder.NewBasePage("not_found", nil, nil)
+	return err
 }
