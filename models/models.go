@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/satori/go.uuid"
 )
 
@@ -12,12 +11,14 @@ const (
 )
 
 type Chat struct {
-	msgsqueue.Chat
-	Timezone int
+	ID        int
+	Title     string
+	IsPrivate bool
+	Timezone  int
 }
 
-type User struct {
-	msgsqueue.User
+func NewChat(chatID, timezone int, title string, isPrivate bool) *Chat {
+	return &Chat{ID: chatID, Timezone: timezone, Title: title, IsPrivate: isPrivate}
 }
 
 type Reminder struct {

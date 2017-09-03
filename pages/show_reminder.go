@@ -3,7 +3,7 @@ package pages
 import (
 	"reminder/core"
 	"reminder/core/page"
-	"reminder/reminders"
+	"reminder/storages/reminders"
 
 	"fmt"
 	"github.com/pkg/errors"

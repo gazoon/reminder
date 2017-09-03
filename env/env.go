@@ -11,7 +11,7 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"reminder/pages"
-	"reminder/reminders"
+	"reminder/storages/reminders"
 )
 
 const (
@@ -55,7 +55,7 @@ func CreateUIPresenter(messenger messenger.Messenger, remindersStorage reminders
 		&pages.ChangeTimezone{},
 		&pages.Home{},
 		&pages.NotFound{},
-		&pages.ReminderList{Storage: remindersStorage},
+		&pages.ReminderList{Reminders: remindersStorage},
 		&pages.ShowReminder{Storage: remindersStorage},
 	)
 	if err != nil {

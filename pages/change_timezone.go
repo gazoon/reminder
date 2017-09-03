@@ -7,6 +7,7 @@ import (
 
 type ChangeTimezone struct {
 	*page.BasePage
+
 }
 
 func (ct *ChangeTimezone) Init(builder *page.PagesBuilder) error {

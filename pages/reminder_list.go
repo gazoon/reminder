@@ -6,7 +6,7 @@ import (
 
 	"fmt"
 	"reminder/models"
-	"reminder/reminders"
+	"reminder/storages/reminders"
 	"strconv"
 	"strings"
 
@@ -16,7 +16,7 @@ import (
 type ReminderList struct {
 	*page.BasePage
 
-	Storage reminders.Storage
+	Reminders reminders.Storage
 }
 
 func (rl *ReminderList) Init(builder *page.PagesBuilder) error {
@@ -29,7 +29,7 @@ func (rl *ReminderList) Init(builder *page.PagesBuilder) error {
 }
 
 func (rl *ReminderList) getReminders(req *core.Request) ([]*models.Reminder, error) {
-	list, err := rl.Storage.List(req.Ctx, req.Chat.ID)
+	list, err := rl.Reminders.List(req.Ctx, req.Chat.ID)
 	return list, errors.Wrap(err, "storage list")
 }
 
@@ -68,7 +68,7 @@ func (rl *ReminderList) getOrDeleteInputController(req *core.Request) (map[strin
 	reminder := remindersList[index]
 	var isDeleted bool
 	if command == "delete" {
-		err := rl.Storage.Delete(req.Ctx, reminder.ID)
+		err := rl.Reminders.Delete(req.Ctx, reminder.ID)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "cannot delete from storage")
 		}
