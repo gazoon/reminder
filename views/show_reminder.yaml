@@ -2,7 +2,8 @@ actions:
   show:
     - send_text:
       - "{{.title}}"
-      - "Remind at {{.date}}"
+      - "Remind at {{.remind_at}}"
+      - "Created at {{.created_at}}"
     - send_text:
       - "{{.description}}"
 

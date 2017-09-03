@@ -23,6 +23,7 @@ func init() {
 type Storage interface {
 	List(ctx context.Context, chatID int) ([]*models.Reminder, error)
 	Get(ctx context.Context, reminderID string) (*models.Reminder, error)
+	Delete(ctx context.Context, reminderID string) error
 	Save(ctx context.Context, reminder *models.Reminder) error
 }
 
@@ -43,7 +44,7 @@ func NewMongoStorage(database, collection, user, password, host string, port, ti
 
 func (ms *MongoStorage) List(ctx context.Context, chatID int) ([]*models.Reminder, error) {
 	data := []*Reminder{}
-	err := ms.client.Find(ctx, bson.M{"chat_id": chatID}, "", -1, -1, &data)
+	err := ms.client.Find(ctx, bson.M{"chat_id": chatID}, "created_at", -1, -1, &data)
 	if err != nil {
 		return nil, errors.Wrap(err, "mongo find")
 	}
@@ -70,9 +71,14 @@ func (ms *MongoStorage) Get(ctx context.Context, reminderID string) (*models.Rem
 	return data.toModel()
 }
 
+func (ms *MongoStorage) Delete(ctx context.Context, reminderID string) error {
+	_, err := ms.client.Remove(ctx, bson.M{"reminder_id": reminderID})
+	return errors.Wrap(err, "mongo remove")
+}
+
 func (ms *MongoStorage) Save(ctx context.Context, reminder *models.Reminder) error {
 	data := DataFromModel(reminder)
-	err := ms.client.UpsertRetry(ctx, bson.M{"reminder_id": reminder.ReminderID}, data)
+	err := ms.client.UpsertRetry(ctx, bson.M{"reminder_id": reminder.ID}, data)
 	return errors.Wrap(err, "mongo upsert")
 }
 
@@ -88,7 +94,7 @@ type Reminder struct {
 
 func DataFromModel(m *models.Reminder) *Reminder {
 	return &Reminder{
-		ReminderID:  m.ReminderID,
+		ReminderID:  m.ID,
 		ChatID:      m.ChatID,
 		Title:       m.Title,
 		RemindAt:    m.RemindAt,
@@ -103,7 +109,7 @@ func (r *Reminder) toModel() (*models.Reminder, error) {
 		return nil, errors.Wrap(err, "bad data for reminder")
 	}
 	return &models.Reminder{
-		ReminderID:  r.ReminderID,
+		ID:          r.ReminderID,
 		ChatID:      r.ChatID,
 		Title:       r.Title,
 		RemindAt:    r.RemindAt,

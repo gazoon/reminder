@@ -7,6 +7,10 @@ import (
 	"github.com/satori/go.uuid"
 )
 
+const (
+	DefaultTimzone = 3
+)
+
 type Chat struct {
 	msgsqueue.Chat
 	Timezone int
@@ -17,18 +21,18 @@ type User struct {
 }
 
 type Reminder struct {
-	ReminderID string
-	ChatID     int
-	Title      string
-	RemindAt   time.Time
-	CreatedAt  time.Time
+	ID        string
+	ChatID    int
+	Title     string
+	RemindAt  time.Time
+	CreatedAt time.Time
 
 	Description *string
 }
 
 func NewReminder(chatID int, title string, remindAt time.Time, description *string) *Reminder {
 	return &Reminder{
-		ReminderID:  uuid.NewV4().String(),
+		ID:          uuid.NewV4().String(),
 		ChatID:      chatID,
 		Title:       title,
 		RemindAt:    remindAt,

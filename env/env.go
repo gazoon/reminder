@@ -42,17 +42,22 @@ func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
 }
 
-func CreateMongoReminderStorage() (reminders.Storage, error) {
+func CreateMongoRemindersStorage() (reminders.Storage, error) {
 	conf := config.GetInstance().MongoReminders
 	storage, err := reminders.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
 		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
 	return storage, errors.Wrap(err, "mongo reminders storage")
 }
 
-func CreateUIPresenter(messenger messenger.Messenger) (*presenter.UIPresenter, error) {
+func CreateUIPresenter(messenger messenger.Messenger, remindersStorage reminders.Storage) (*presenter.UIPresenter, error) {
 	builder := page.NewPagesBuilder(messenger, pageViewsFolder)
-	pagesRegistry, err := builder.InstantiatePages(&pages.ChangeTimezone{}, &pages.Home{}, &pages.NotFound{}, &pages.ReminderList{},
-		&pages.ShowReminder{})
+	pagesRegistry, err := builder.InstantiatePages(
+		&pages.ChangeTimezone{},
+		&pages.Home{},
+		&pages.NotFound{},
+		&pages.ReminderList{Storage: remindersStorage},
+		&pages.ShowReminder{Storage: remindersStorage},
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")
 	}

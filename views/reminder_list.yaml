@@ -6,11 +6,24 @@ actions:
     - foreach:
         function: send_text
         values: $reminder_previews
+    - goto: work_with_reminder
+
+  work_with_reminder:
     - set_input_handler: "on_get_or_delete"
-    - send_text: "Type: {reminder_number} delete/show\nTo delete or show details of particular reminder."
+    - send_text: |-
+        {{if eq .params.error_msg ""}}
+        Type: {reminder_number} delete/show
+        To delete or show details of particular reminder.
+        {{else}}
+        Problems with your input: {{.params.error_msg}}. Type again.
+        {{end}}
 
   on_get_or_delete:
-    - redirect: { if: "{{ .deleted }}", then: "main", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
+    - redirect:
+        cond:
+          - { if: "{{ .error }}", then: "work_with_reminder?error_msg={{ .error_msg }}" }
+          - { if: "{{ .deleted }}", then: "reminders", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
+
 
   no_reminders:
     - send_text: "You don't have any reminders yet. You could create one."
@@ -18,7 +31,4 @@ actions:
       - { text: "Create", handler: "page://reminder_creation", intents: ["create","new","add"] }
 
 entry_action: reminders
-
-config:
-  preview_template: "1. %.30s"
 
