@@ -35,7 +35,14 @@ func main() {
 	pollerService := gateway.NewTelegramPoller(incomingQueue, conf.Telegram.APIToken, conf.Telegram.BotName,
 		conf.TelegramPolling.PollTimeout, conf.TelegramPolling.RetryDelay)
 	remindersStorage, err := env.CreateMongoRemindersStorage()
-	presenter, err := env.CreateUIPresenter(telegramMessenger, remindersStorage)
+	if err != nil {
+		panic(err)
+	}
+	chatsStorage, err := env.CreateMongoChatsStorage()
+	if err != nil {
+		panic(err)
+	}
+	presenter, err := env.CreateUIPresenter(telegramMessenger, remindersStorage, chatsStorage)
 	if err != nil {
 		panic(err)
 	}

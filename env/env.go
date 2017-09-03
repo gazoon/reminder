@@ -11,6 +11,7 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"reminder/pages"
+	"reminder/storages/chats"
 	"reminder/storages/reminders"
 )
 
@@ -49,14 +50,23 @@ func CreateMongoRemindersStorage() (reminders.Storage, error) {
 	return storage, errors.Wrap(err, "mongo reminders storage")
 }
 
-func CreateUIPresenter(messenger messenger.Messenger, remindersStorage reminders.Storage) (*presenter.UIPresenter, error) {
+func CreateMongoChatsStorage() (chats.Storage, error) {
+	conf := config.GetInstance().MongoChats
+	storage, err := chats.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
+		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
+	return storage, errors.Wrap(err, "mongo chats storage")
+}
+
+func CreateUIPresenter(messenger messenger.Messenger, remindersStorage reminders.Storage, chatsStorage chats.Storage) (
+	*presenter.UIPresenter, error) {
+
 	builder := page.NewPagesBuilder(messenger, pageViewsFolder)
 	pagesRegistry, err := builder.InstantiatePages(
-		&pages.ChangeTimezone{},
+		&pages.ChangeTimezone{Chats: chatsStorage},
 		&pages.Home{},
 		&pages.NotFound{},
 		&pages.ReminderList{Reminders: remindersStorage},
-		&pages.ShowReminder{Storage: remindersStorage},
+		&pages.ShowReminder{Reminders: remindersStorage, Chats: chatsStorage},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")

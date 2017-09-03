@@ -47,6 +47,18 @@
     "retries_num": 3,
     "retries_interval": 500
   },
+  "mongo_chats": {
+    "database": "local",
+    "collection": "chats_storage",
+    "host": "localhost",
+    "port": 27017,
+    "user": "",
+    "password": "",
+    "timeout": 1,
+    "pool_size": 10,
+    "retries_num": 3,
+    "retries_interval": 500
+  },
   "logging": {
     "default_level": "info",
     "toggle_port": 8989,

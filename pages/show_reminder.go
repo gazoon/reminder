@@ -3,18 +3,17 @@ package pages
 import (
 	"reminder/core"
 	"reminder/core/page"
+	"reminder/storages/chats"
 	"reminder/storages/reminders"
 
-	"fmt"
 	"github.com/pkg/errors"
-	"reminder/models"
-	"time"
 )
 
 type ShowReminder struct {
 	*page.BasePage
 
-	Storage reminders.Storage
+	Reminders reminders.Storage
+	Chats     chats.Storage
 }
 
 func (sr *ShowReminder) Init(builder *page.PagesBuilder) error {
@@ -24,28 +23,30 @@ func (sr *ShowReminder) Init(builder *page.PagesBuilder) error {
 }
 
 func (sr *ShowReminder) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {
+	chat, err := sr.Chats.Get(req.Ctx, req.Chat.ID)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "chats storage get")
+	}
 	reminderID := req.URL.Params["reminder_id"]
 	if reminderID == "" {
 		return nil, nil, errors.New("'reminder_id' not found in url params")
 	}
-	reminder, err := sr.Storage.Get(req.Ctx, reminderID)
+	reminder, err := sr.Reminders.Get(req.Ctx, reminderID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reminders storage get failed")
 	}
-	data := map[string]interface{}{
-		"title":       reminder.Title,
-		"created_at":  reminder.CreatedAt,
-		"remind_at":   reminder.RemindAt,
-		"description": "",
-	}
-	loc := time.FixedZone("", models.DefaultTimezone)
-	fmt.Println(reminder.RemindAt.UTC())
-	fmt.Println(reminder.RemindAt)
-	fmt.Println(reminder.RemindAt.In(loc))
-	loc = time.FixedZone("", models.DefaultTimezone+3600)
-	fmt.Println(reminder.RemindAt.In(loc))
+	data := map[string]interface{}{"title": reminder.Title}
 	if reminder.Description != nil {
 		data["description"] = *reminder.Description
+	} else {
+		data["description"] = ""
+	}
+	if chat == nil {
+		data["created_at"] = reminder.CreatedAt
+		data["remind_at"] = reminder.RemindAt
+	} else {
+		data["created_at"] = reminder.CreatedAtLocal(chat)
+		data["remind_at"] = reminder.RemindAtLocal(chat)
 	}
 	return data, nil, nil
 }

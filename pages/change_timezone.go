@@ -3,11 +3,13 @@ package pages
 import (
 	"reminder/core"
 	"reminder/core/page"
+	"reminder/storages/chats"
 )
 
 type ChangeTimezone struct {
 	*page.BasePage
 
+	Chats chats.Storage
 }
 
 func (ct *ChangeTimezone) Init(builder *page.PagesBuilder) error {
