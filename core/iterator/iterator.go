@@ -86,9 +86,9 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "'text' param")
 	}
-	buttons, ok := params["buttons"].([]*Button)
-	if !ok {
-		return errors.Errorf("buttons param must be []*Button, not %v", params["buttons"])
+	buttons, err := getButtonsArg(params["buttons"])
+	if err != nil {
+		return errors.Wrap(err, "'buttons' param")
 	}
 	messengerButtons := make([]*messenger.Button, len(buttons))
 	for i, button := range buttons {
@@ -129,9 +129,34 @@ func (iter *Iterator) sendAttachmentWithButtons(args interface{}) error {
 	return nil
 }
 
-func unfoldForeach(script []*Command) ([]*Command, error) {
-	originalScript := script
-	script = make([]*Command, 0, len(originalScript))
+func dropEmptyCommands(originalScript []*Command) ([]*Command, error) {
+	script := make([]*Command, 0, len(originalScript))
+	for _, cmd := range originalScript {
+		if cmd.Name == SendTextCmd {
+			text, err := processTextArgs(cmd.Args)
+			if err != nil {
+				return nil, errors.Wrap(err, SendTextCmd)
+			}
+			if text == "" {
+				continue
+			}
+		}
+		if cmd.Name == SendButtonsCmd {
+			buttons, err := getButtonsArg(cmd.Args)
+			if err != nil {
+				return nil, errors.Wrap(err, SendButtonsCmd)
+			}
+			if len(buttons) == 0 {
+				continue
+			}
+		}
+		script = append(script, cmd)
+	}
+	return script, nil
+}
+
+func unfoldForeach(originalScript []*Command) ([]*Command, error) {
+	script := make([]*Command, 0, len(originalScript))
 	for _, cmd := range originalScript {
 		if originalFunc, ok := foreachShortcuts[cmd.Name]; ok {
 			cmd = &Command{
@@ -206,6 +231,10 @@ func addNotNilCmd(script []*Command, cmd *Command) []*Command {
 func (iter *Iterator) Run() error {
 	script := iter.initScript
 	var err error
+	script, err = dropEmptyCommands(script)
+	if err != nil {
+		return err
+	}
 	script, err = unfoldForeach(script)
 	if err != nil {
 		return err
@@ -237,6 +266,14 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		}
 	}
 	return nil
+}
+
+func getButtonsArg(arg interface{}) ([]*Button, error) {
+	buttons, ok := arg.([]*Button)
+	if !ok {
+		return nil, errors.Errorf("param must be []*Button, not %v", arg)
+	}
+	return buttons, nil
 }
 
 func processTextArgs(textArgs interface{}) (string, error) {

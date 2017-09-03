@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	DefaultTimzone = 3
+	DefaultTimezone = 10800
 )
 
 type Chat struct {
