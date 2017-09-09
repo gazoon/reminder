@@ -9,7 +9,7 @@ actions:
         {{end}}
 
   on_timezone:
-    - redirect: "changed"
+    - redirect: { if: "{{ .error }}", then: "main?error_msg={{ .error_msg }}", else: "changed" }
 
   changed:
     - send_text: "Timezone changed"

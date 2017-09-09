@@ -56,14 +56,14 @@ func parseGetOrDelete(req *core.Request) (string, int, error) {
 func (rl *ReminderList) getOrDeleteInputController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	command, index, err := parseGetOrDelete(req)
 	if err != nil {
-		return map[string]interface{}{"error": true, "error_msg": err.Error()}, nil, nil
+		return page.BadInputResponse(err.Error())
 	}
 	remindersList, err := rl.getReminders(req)
 	if err != nil {
 		return nil, nil, err
 	}
 	if index >= len(remindersList) {
-		return map[string]interface{}{"error": true, "error_msg": "there is no reminder with such number"}, nil, nil
+		return page.BadInputResponse("there is no reminder with such number")
 	}
 	reminder := remindersList[index]
 	var isDeleted bool

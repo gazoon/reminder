@@ -1,9 +1,12 @@
 package pages
 
 import (
+	"github.com/pkg/errors"
 	"reminder/core"
 	"reminder/core/page"
+	"reminder/models"
 	"reminder/storages/chats"
+	"strconv"
 )
 
 type ChangeTimezone struct {
@@ -23,5 +26,23 @@ func (ct *ChangeTimezone) Init(builder *page.PagesBuilder) error {
 
 func (ct *ChangeTimezone) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
 	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.Msg.Text)
-	return nil, nil, nil
+	timezoneInMinutes, err := strconv.Atoi(req.Msg.Text)
+	if err != nil {
+		return page.BadInputResponse(err.Error())
+	}
+	timezoneInSeconds := timezoneInMinutes * 60
+	chat, err := ct.Chats.Get(req.Ctx, req.Chat.ID)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "chats storage get")
+	}
+	if chat == nil {
+		chat = models.NewChat(req.Chat.ID, timezoneInSeconds, req.Chat.Title, req.Chat.IsPrivate)
+	} else {
+		chat.Timezone = timezoneInSeconds
+	}
+	err = ct.Chats.Save(req.Ctx, chat)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "chats storage save")
+	}
+	return map[string]interface{}{"error": false}, nil, nil
 }

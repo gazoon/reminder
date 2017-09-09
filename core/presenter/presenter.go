@@ -104,7 +104,7 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 		logger.Infof("Enter %s", req.URL.Encode())
 		nextURL, err := pg.Enter(req)
 		if err != nil {
-			logger.Errorf("Page %s failed: %s", pg.GetName(), err)
+			logger.Errorf("Page %s failed: %+v", pg.GetName(), err)
 			return false
 		}
 		req.Session.SetLastPage(req.Ctx, req.URL)

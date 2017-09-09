@@ -624,3 +624,7 @@ func mergeScriptData(actionData, globalPageData, commonData map[string]interface
 	}
 	return result
 }
+
+func BadInputResponse(errorMsg string) (map[string]interface{}, *core.URL, error) {
+	return map[string]interface{}{"error": true, "error_msg": errorMsg}, nil, nil
+}
