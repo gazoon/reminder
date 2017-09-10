@@ -18,6 +18,7 @@ type ctxKey int
 
 const (
 	SendTextCmd                  = "send_text"
+	ClearPageStateCmd            = "clear_page_state"
 	SendTextWithButtonsCmd       = "send_text_with_buttons"
 	SendAttachmentCmd            = "send_attachment"
 	SendAttachmentWithButtonsCmd = "send_attachment_with_buttons"
@@ -75,6 +76,15 @@ func (iter *Iterator) sendText(args interface{}) error {
 	}
 	_, err = iter.messenger.SendText(iter.req.Ctx, iter.req.Chat.ID, text)
 	return errors.Wrap(err, "messenger send text")
+}
+
+func (iter *Iterator) clearPageState(args interface{}) error {
+	pageName, ok := args.(string)
+	if !ok {
+		return errors.Errorf("called with not string arg %v", args)
+	}
+	delete(iter.req.Session.PagesStates, pageName)
+	return nil
 }
 
 func (iter *Iterator) sendTextWithButtons(args interface{}) error {
@@ -253,6 +263,7 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		SendAttachmentWithButtonsCmd: iter.sendAttachment,
 		SendAttachmentCmd:            iter.sendAttachment,
 		SetInputHandlerCmd:           iter.setInputHandler,
+		ClearPageStateCmd:            iter.clearPageState,
 	}
 	for _, cmd := range resultScript {
 		cmdHandler, ok := commandsMapping[cmd.Name]

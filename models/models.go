@@ -21,8 +21,13 @@ func NewChat(chatID, timezone int, title string, isPrivate bool) *Chat {
 	return &Chat{ID: chatID, Timezone: timezone, Title: title, IsPrivate: isPrivate}
 }
 
-func (c *Chat) ToLocalTime(t time.Time) time.Time {
+func (c *Chat) TimeLocation() *time.Location {
 	loc := time.FixedZone("", c.Timezone)
+	return loc
+}
+
+func (c *Chat) ToLocalTime(t time.Time) time.Time {
+	loc := c.TimeLocation()
 	return t.In(loc)
 }
 

@@ -2,69 +2,57 @@ actions:
   input_routing:
     - goto:
         cond:
-          - { if: '{{eq .part "title"}}', then: enter_title }
-          - { if: '{{eq .part "date"}}', then: enter_date }
-          - { if: '{{eq .part "description"}}', then: enter_description }
-          - { if: '{{eq .part "attachment"}}', then: add_attachment }
+          - { if: '{{eq .page_state.last_enter "title"}}', then: enter_date }
+          - { if: '{{eq .page_state.last_enter "date"}}', then: enter_description }
+          - { if: '{{eq .page_state.last_enter "description"}}', then: done }
+    - goto: enter_title
 
   enter_title:
     - set_input_handler: "on_title"
-    - send_text:
-        {{if eq .error_msg ""}}
-        "Enter title."
-        {{else}}
-        "Problems with title: {{.ErrorMsg}}. Type again."
-        {{end}}
+    - send_text: "Enter title:"
 
   on_title:
     - redirect: "enter_date"
 
   enter_date:
     - set_input_handler: "on_date"
-    - send_text:
-        {{if eq .error_msg ""}}
-        "Enter date."
+    - send_text: |-
+        {{if eq .params.error_msg ""}}
+        Enter date:
         {{else}}
-        "Problems with date: {{.ErrorMsg}}. Type again."
+        Problems with date: {{.params.error_msg}}. Type again:
         {{end}}
+    - send_text:
+        if: $params.error_msg
+        eq: ""
+        then: "Enter date:"
+        else: "Problems with date: {{.params.error_msg}}. Type again:"
 
   on_date:
+    - redirect: { if: $error, then: "enter_date?error_msg={{ .error_msg }}" }
+    - redirect: { if: $no_timezone, then: "no_timezone" }
     - redirect: "enter_description"
+
+  no_timezone:
+    - sent_text: "Sorry, but you have to specify your timezone first"
+    - redirect: "page://change_timezone"
 
   enter_description:
     - set_input_handler: "on_description"
-    - send_text:
-        {{if eq .error_msg ""}}
-        "Enter Description (optional)."
-        {{else}}
-        "Problems with description: {{.ErrorMsg}}. Type again."
-        {{end}}
+    - send_text: "Enter Description (optional):"
     - send_buttons:
-      - { text: "Skip", handler: "add_attachment", intents: ["skip","next"] }
       - { text: "Done", handler: "done", intents: ["done","ready","finish"] }
 
   on_description:
-    - redirect: "add_attachment"
-
-  add_attachment:
-    - send_text:
-        {{if eq .error_msg ""}}
-        "Upload attachment (optional)."
-        {{else}}
-        "Problems with attachment: {{.ErrorMsg}}. Upload again."
-        {{end}}
-    - send_buttons:
-      - { text: "Done", handler: "done", intents: ["done","ready","finish"] }
-
-  on_attachment:
-    - redirect: "add_attachment"
+    - redirect: "done"
 
   done:
     - send_text: "Reminder successfully created."
     - send_buttons:
-      - { text: "Home", handler: "page://home", intents:["home","root","main"] }
+      - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 
   cancel:
+    - clear_page_state:
     - redirect: "page://home"
 
 entry_action: input_routing

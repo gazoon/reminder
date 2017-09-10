@@ -1,6 +1,6 @@
 actions:
   reminders:
-    - goto: { if: "{{ .no_reminders }}", then: no_reminders }
+    - goto: { if: $no_reminders, then: no_reminders }
 
     - send_text: "List of your reminders:"
     - foreach:
@@ -21,8 +21,8 @@ actions:
   on_get_or_delete:
     - redirect:
         cond:
-          - { if: "{{ .error }}", then: "work_with_reminder?error_msg={{ .error_msg }}" }
-          - { if: "{{ .deleted }}", then: "reminders", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
+          - { if: $error_msg, then: "work_with_reminder?error_msg={{ .error_msg }}" }
+          - { if: $deleted, then: "reminders", else: "page://show_reminder?reminder_id={{ .reminder_id}}" }
 
 
   no_reminders:

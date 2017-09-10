@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	urlScheme     = "page"
+	urlScheme = "page"
 )
 
 var (
@@ -96,8 +96,7 @@ func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *
 	reqURL, err := NewURLFromStr(msg.Text)
 	if err != nil {
 		reqURL = nil
-	}
-	if reqURL.IsRelative() {
+	} else if reqURL.IsRelative() {
 		reqURL = nil
 	}
 	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From, URL: reqURL, Session: session,
@@ -116,7 +115,9 @@ type Session struct {
 
 func NewSession(chatID int) *Session {
 	sessionID := uuid.NewV4().String()
-	return &Session{ChatID: chatID, ID: sessionID}
+	globalState := make(map[string]interface{})
+	pagesState := make(map[string]map[string]interface{})
+	return &Session{ChatID: chatID, ID: sessionID, GlobalState: globalState, PagesStates: pagesState}
 }
 
 func (s Session) String() string {

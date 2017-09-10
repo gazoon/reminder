@@ -44,5 +44,5 @@ func (ct *ChangeTimezone) onTimezoneController(req *core.Request) (map[string]in
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "chats storage save")
 	}
-	return map[string]interface{}{"error": false}, nil, nil
+	return nil, nil, nil
 }

@@ -13,6 +13,7 @@ import (
 
 	"reflect"
 
+	fmt "fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -237,16 +238,19 @@ func (bp *BasePage) buildIntents() ([]*core.Intent, error) {
 	return intents, nil
 }
 
+// global session state and page state always should be not nil maps
 func (bp *BasePage) GetState(req *core.Request) map[string]interface{} {
-	return req.Session.PagesStates[bp.Name]
-}
-
-func (bp *BasePage) UpdateState(req *core.Request, key string, value interface{}) {
 	state, ok := req.Session.PagesStates[bp.Name]
 	if !ok {
 		state = make(map[string]interface{})
 	}
+	return state
+}
+
+func (bp *BasePage) UpdateState(req *core.Request, key string, value interface{}) {
+	state := bp.GetState(req)
 	state[key] = value
+	bp.SetState(req, state)
 }
 
 func (bp *BasePage) ClearState(req *core.Request) {
@@ -262,6 +266,8 @@ func (bp *BasePage) getCommonScriptData(req *core.Request) map[string]interface{
 		"message_text": req.Msg.Text,
 		"user":         req.User,
 		"chat":         req.Chat,
+		"session":      req.Session.GlobalState,
+		"page_state":   req.Session.PagesStates[bp.Name],
 		"params":       req.URL.Params,
 	}
 	return data
@@ -322,6 +328,10 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 				}
 				break
 			} else {
+				if cmd.Name == iterator.ClearPageStateCmd && cmd.Args == nil {
+					cmd.Args = bp.Name
+				}
+				fmt.Println(cmd.Args)
 				script = append(script, cmd)
 			}
 		}
@@ -527,13 +537,31 @@ func ifStatement(item map[string]interface{}) (interface{}, error) {
 	if ifArg == nil {
 		return nil, errors.New("if key doesn't present")
 	}
-	condition, ok := ifArg.(bool)
-	if !ok {
-		var err error
-		stringArg, _ := ifArg.(string)
-		condition, err = strconv.ParseBool(stringArg)
-		if err != nil {
-			return nil, errors.Wrap(err, "if arg must be bool or a string with bool parsable value")
+	var condition bool
+	var isOperatorPresent bool
+	for _, operator := range []string{"eq", "ne"} {
+		operatorArg, ok := item[operator]
+		if ok {
+			isEqual := reflect.DeepEqual(ifArg, operatorArg)
+			if operator == "eq" {
+				condition = isEqual
+			} else {
+				condition = !isEqual
+			}
+			isOperatorPresent = true
+			break
+		}
+	}
+	if !isOperatorPresent {
+		var ok bool
+		condition, ok = ifArg.(bool)
+		if !ok {
+			var err error
+			stringArg, _ := ifArg.(string)
+			condition, err = strconv.ParseBool(stringArg)
+			if err != nil {
+				condition = reflect.DeepEqual(ifArg, reflect.Zero(reflect.TypeOf(ifArg)).Interface())
+			}
 		}
 	}
 	if condition {
