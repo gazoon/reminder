@@ -15,6 +15,7 @@ actions:
     - redirect: "enter_date"
 
   enter_date:
+    - redirect: { if: $no_timezone, then: "no_timezone" }
     - set_input_handler: "on_date"
     - send_text: |-
         {{if eq .params.error_msg ""}}
@@ -29,8 +30,7 @@ actions:
         else: "Problems with date: {{.params.error_msg}}. Type again:"
 
   on_date:
-    - redirect: { if: $error, then: "enter_date?error_msg={{ .error_msg }}" }
-    - redirect: { if: $no_timezone, then: "no_timezone" }
+    - redirect: { if: $error_msg, then: "enter_date?error_msg={{ .error_msg }}" }
     - redirect: "enter_description"
 
   no_timezone:

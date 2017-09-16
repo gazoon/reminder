@@ -533,8 +533,8 @@ func computeConditionalStmts(args interface{}) (interface{}, error) {
 }
 
 func ifStatement(item map[string]interface{}) (interface{}, error) {
-	ifArg := item["if"]
-	if ifArg == nil {
+	ifArg, ok := item["if"]
+	if !ok {
 		return nil, errors.New("if key doesn't present")
 	}
 	var condition bool
@@ -554,13 +554,17 @@ func ifStatement(item map[string]interface{}) (interface{}, error) {
 	}
 	if !isOperatorPresent {
 		var ok bool
-		condition, ok = ifArg.(bool)
-		if !ok {
-			var err error
-			stringArg, _ := ifArg.(string)
-			condition, err = strconv.ParseBool(stringArg)
-			if err != nil {
-				condition = reflect.DeepEqual(ifArg, reflect.Zero(reflect.TypeOf(ifArg)).Interface())
+		if ifArg == nil {
+			condition = false
+		} else {
+			condition, ok = ifArg.(bool)
+			if !ok {
+				var err error
+				stringArg, _ := ifArg.(string)
+				condition, err = strconv.ParseBool(stringArg)
+				if err != nil {
+					condition = !reflect.DeepEqual(ifArg, reflect.Zero(reflect.TypeOf(ifArg)).Interface())
+				}
 			}
 		}
 	}
@@ -612,10 +616,10 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 			if !ok {
 				return nil, errors.Errorf("%v not a json object, lookup key=%s", value, key)
 			}
-			value, ok = obj[key]
-			if !ok {
-				return nil, errors.Errorf("key %s not found in %v", key, obj)
-			}
+			value = obj[key]
+			//if !ok {
+			//	return nil, errors.Errorf("key %s not found in %v", key, obj)
+			//}
 		} else if structValue, ok := toStructValue(value); ok {
 			field = strings.Title(field)
 			fieldValue := structValue.FieldByName(field)
