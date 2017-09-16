@@ -2,23 +2,17 @@ package reminders
 
 import (
 	"context"
-	"github.com/gazoon/bot_libs/mongo"
-	"github.com/pkg/errors"
-	"gopkg.in/go-playground/validator.v9"
-	"gopkg.in/mgo.v2/bson"
 	"reminder/models"
 
-	"gopkg.in/mgo.v2"
+	"github.com/gazoon/bot_libs/mongo"
+	"github.com/gazoon/bot_libs/utils"
+	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
+
 	"time"
-)
 
-var (
-	validate *validator.Validate
+	"gopkg.in/mgo.v2"
 )
-
-func init() {
-	validate = validator.New()
-}
 
 type Storage interface {
 	List(ctx context.Context, chatID int) ([]*models.Reminder, error)
@@ -104,7 +98,7 @@ func DataFromModel(m *models.Reminder) *Reminder {
 }
 
 func (r *Reminder) toModel() (*models.Reminder, error) {
-	err := validate.Struct(r)
+	err := utils.Validate.Struct(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "bad data for reminder")
 	}

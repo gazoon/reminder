@@ -262,13 +262,17 @@ func (bp *BasePage) SetState(req *core.Request, state map[string]interface{}) {
 }
 
 func (bp *BasePage) getCommonScriptData(req *core.Request) map[string]interface{} {
+	params := make(map[string]interface{}, len(req.URL.Params))
+	for k, v := range req.URL.Params {
+		params[k] = v
+	}
 	data := map[string]interface{}{
 		"message_text": req.Msg.Text,
 		"user":         req.User,
 		"chat":         req.Chat,
 		"session":      req.Session.GlobalState,
 		"page_state":   req.Session.PagesStates[bp.Name],
-		"params":       req.URL.Params,
+		"params":       params,
 	}
 	return data
 }
@@ -617,9 +621,6 @@ func retrieveValue(dataKey string, scriptData interface{}) (interface{}, error) 
 				return nil, errors.Errorf("%v not a json object, lookup key=%s", value, key)
 			}
 			value = obj[key]
-			//if !ok {
-			//	return nil, errors.Errorf("key %s not found in %v", key, obj)
-			//}
 		} else if structValue, ok := toStructValue(value); ok {
 			field = strings.Title(field)
 			fieldValue := structValue.FieldByName(field)

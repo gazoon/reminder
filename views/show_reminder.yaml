@@ -1,5 +1,6 @@
 actions:
   show:
+    - goto: { if: $reminder_not_found, then: not_found }
     - send_text:
       - "{{.title}}"
       - "Remind at {{.remind_at}}"
@@ -10,6 +11,12 @@ actions:
 #    - for_each:
 #        function: send_attachment
 #        values: $reminder_attachments
+    - send_buttons:
+      - { text: "All reminders", handler: "page://reminder_list", intents: ["list","show","catalog"] }
+
+  not_found:
+    - send_text:
+      - "Reminder doesn't exist"
     - send_buttons:
       - { text: "All reminders", handler: "page://reminder_list", intents: ["list","show","catalog"] }
 

@@ -1,16 +1,20 @@
 package pages
 
 import (
+	"fmt"
+	"github.com/gazoon/bot_libs/utils"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"reminder/core"
 	"reminder/core/page"
+	"reminder/models"
 	"reminder/storages/chats"
 	"reminder/storages/reminders"
 	"time"
 )
 
-const (
-	timeFormat = "2006-01-02 15:04:05"
+var (
+	timeFormats = []string{"2006-01-02 15:04:05", "2006.01.02 15:04:05"}
 )
 
 type ReminderCreation struct {
@@ -23,7 +27,6 @@ type ReminderCreation struct {
 func (rc *ReminderCreation) Init(builder *page.PagesBuilder) error {
 	var err error
 	controllers := map[string]page.Controller{
-		"input_routing":  rc.inputRoutingController,
 		"on_title":       rc.onTitleController,
 		"on_date":        rc.onDateController,
 		"on_description": rc.onDescriptionController,
@@ -31,14 +34,6 @@ func (rc *ReminderCreation) Init(builder *page.PagesBuilder) error {
 	}
 	rc.BasePage, err = builder.NewBasePage("reminder_creation", nil, controllers)
 	return err
-}
-
-func (rc *ReminderCreation) inputRoutingController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	state := rc.GetState(req)
-	if _, ok := state["last_enter"]; !ok {
-		rc.UpdateState(req, "last_enter", "")
-	}
-	return nil, nil, nil
 }
 
 func (rc *ReminderCreation) onTitleController(req *core.Request) (map[string]interface{}, *core.URL, error) {
@@ -57,13 +52,23 @@ func (rc *ReminderCreation) onDateController(req *core.Request) (map[string]inte
 		return map[string]interface{}{"no_timezone": true}, nil, nil
 	}
 	loc := chat.TimeLocation()
-	remindAt, err := time.ParseInLocation(timeFormat, req.Msg.Text, loc)
-	if err != nil {
-		return page.BadInputResponse(err.Error())
+	var remindAt time.Time
+	for _, format := range timeFormats {
+		var err error
+		remindAt, err = time.ParseInLocation(format, req.Msg.Text, loc)
+		if err == nil {
+			break
+		} else {
+			fmt.Println(err)
+		}
+
+	}
+	if remindAt.IsZero() {
+		return page.BadInputResponse(fmt.Sprintf("cannot parse in any of these formats: %v", timeFormats))
 	}
 	rc.UpdateState(req, "remind_at", remindAt)
 	rc.UpdateState(req, "last_enter", "date")
-	return map[string]interface{}{"no_timezone": false, "error": false}, nil, nil
+	return nil, nil, nil
 }
 
 func (rc *ReminderCreation) onDescriptionController(req *core.Request) (map[string]interface{}, *core.URL, error) {
@@ -74,5 +79,26 @@ func (rc *ReminderCreation) onDescriptionController(req *core.Request) (map[stri
 }
 
 func (rc *ReminderCreation) doneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
+	data := rc.GetState(req)
+	form := &ReminderForm{}
+	err := mapstructure.Decode(data, form)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "to form decode")
+	}
+	err = utils.Validate.Struct(form)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "form validation")
+	}
+	reminder := models.NewReminder(req.Chat.ID, form.Title, form.RemindAt, form.Description)
+	err = rc.Reminders.Save(req.Ctx, reminder)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "reminders storage save ")
+	}
 	return nil, nil, nil
+}
+
+type ReminderForm struct {
+	Title       string    `mapstructure:"title" validate:"required"`
+	RemindAt    time.Time `mapstructure:"remind_at" validate:"required"`
+	Description *string   `mapstructure:"description"`
 }

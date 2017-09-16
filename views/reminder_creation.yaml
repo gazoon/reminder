@@ -2,9 +2,9 @@ actions:
   input_routing:
     - goto:
         cond:
-          - { if: '{{eq .page_state.last_enter "title"}}', then: enter_date }
-          - { if: '{{eq .page_state.last_enter "date"}}', then: enter_description }
-          - { if: '{{eq .page_state.last_enter "description"}}', then: done }
+          - { if: $page_state.last_enter, eq: "title", then: enter_date }
+          - { if: $page_state.last_enter, eq: "date", then: enter_description }
+          - { if: $page_state.last_enter, eq: "description", then: done }
     - goto: enter_title
 
   enter_title:
@@ -15,22 +15,15 @@ actions:
     - redirect: "enter_date"
 
   enter_date:
-    - redirect: { if: $no_timezone, then: "no_timezone" }
     - set_input_handler: "on_date"
-    - send_text: |-
-        {{if eq .params.error_msg ""}}
-        Enter date:
-        {{else}}
-        Problems with date: {{.params.error_msg}}. Type again:
-        {{end}}
     - send_text:
         if: $params.error_msg
-        eq: ""
-        then: "Enter date:"
-        else: "Problems with date: {{.params.error_msg}}. Type again:"
+        then: "Problems with date: {{.params.error_msg}}. Type again:"
+        else: "Enter date in 'YYYY.MM.DD HH.MM.SS' format:"
 
   on_date:
     - redirect: { if: $error_msg, then: "enter_date?error_msg={{ .error_msg }}" }
+    - redirect: { if: $no_timezone, then: "no_timezone" }
     - redirect: "enter_description"
 
   no_timezone:
@@ -48,6 +41,7 @@ actions:
 
   done:
     - send_text: "Reminder successfully created."
+    - clear_page_state:
     - send_buttons:
       - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 

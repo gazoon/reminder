@@ -1,12 +1,10 @@
 actions:
   main:
     - set_input_handler: "on_timezone"
-    - send_text: |-
-        {{ if eq .params.error_msg ""}}
-        Type your timezone in minutes (e.g. -180 or +120):
-        {{else}}
-        Problems with timezone: {{.params.error_msg}}. Type again:
-        {{end}}
+    - send_text:
+        if: $params.error_msg
+        then: "Problems with timezone: {{.params.error_msg}}. Type again:"
+        else: "Type your timezone in minutes (e.g. -180 or +120):"
 
   on_timezone:
     - redirect: { if: $error_msg, then: "main?error_msg={{ .error_msg }}", else: "changed" }

@@ -75,7 +75,7 @@ func (rl *ReminderList) getOrDeleteInputController(req *core.Request) (map[strin
 		isDeleted = true
 	}
 
-	return map[string]interface{}{"error": false, "show": isDeleted, "reminder_id": reminder.ID}, nil, nil
+	return map[string]interface{}{"deleted": isDeleted, "reminder_id": reminder.ID}, nil, nil
 }
 
 func (rl *ReminderList) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {

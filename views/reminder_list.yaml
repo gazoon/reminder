@@ -10,13 +10,12 @@ actions:
 
   work_with_reminder:
     - set_input_handler: "on_get_or_delete"
-    - send_text: |-
-        {{if eq .params.error_msg ""}}
-        Type: {reminder_number} delete/show
-        To delete or show details of particular reminder.
-        {{else}}
-        Problems with your input: {{.params.error_msg}}. Type again.
-        {{end}}
+    - send_text:
+        if: $params.error_msg
+        then: "Problems with your input: {{.params.error_msg}}. Type again."
+        else: "Type: {reminder_number} delete/show"
+    - send_buttons:
+      - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 
   on_get_or_delete:
     - redirect:

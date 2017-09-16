@@ -5,20 +5,12 @@ import (
 	"reminder/models"
 
 	"github.com/gazoon/bot_libs/mongo"
+	"github.com/gazoon/bot_libs/utils"
 	"github.com/pkg/errors"
-	"gopkg.in/go-playground/validator.v9"
 	"gopkg.in/mgo.v2/bson"
 
 	"gopkg.in/mgo.v2"
 )
-
-var (
-	validate *validator.Validate
-)
-
-func init() {
-	validate = validator.New()
-}
 
 type Storage interface {
 	Get(ctx context.Context, ChatID int) (*models.Chat, error)
@@ -75,7 +67,7 @@ func DataFromModel(m *models.Chat) *Chat {
 }
 
 func (c *Chat) toModel() (*models.Chat, error) {
-	err := validate.Struct(c)
+	err := utils.Validate.Struct(c)
 	if err != nil {
 		return nil, errors.Wrap(err, "bad data for chat")
 	}

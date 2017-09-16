@@ -35,6 +35,10 @@ func (sr *ShowReminder) globalController(req *core.Request) (map[string]interfac
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reminders storage get failed")
 	}
+	if reminder == nil {
+		return map[string]interface{}{"reminder_not_found": true}, nil, nil
+	}
+
 	data := map[string]interface{}{"title": reminder.Title}
 	if reminder.Description != nil {
 		data["description"] = *reminder.Description
