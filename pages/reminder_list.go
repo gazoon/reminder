@@ -29,12 +29,12 @@ func (rl *ReminderList) Init(builder *page.PagesBuilder) error {
 }
 
 func (rl *ReminderList) getReminders(req *core.Request) ([]*models.Reminder, error) {
-	list, err := rl.Reminders.List(req.Ctx, req.Chat.ID)
+	list, err := rl.Reminders.List(req.Ctx, req.ChatID)
 	return list, errors.Wrap(err, "storage list")
 }
 
 func parseGetOrDelete(req *core.Request) (string, int, error) {
-	parts := strings.Split(req.Msg.Text, " ")
+	parts := strings.Split(req.MsgText, " ")
 	if len(parts) != 2 {
 		return "", 0, errors.New("expected 2 words input")
 	}

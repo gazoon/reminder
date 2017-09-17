@@ -25,18 +25,18 @@ func (ct *ChangeTimezone) Init(builder *page.PagesBuilder) error {
 }
 
 func (ct *ChangeTimezone) onTimezoneController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.Msg.Text)
-	timezoneInMinutes, err := strconv.Atoi(req.Msg.Text)
+	ct.GetLogger(req.Ctx).Infof("on timezone input: %s", req.MsgText)
+	timezoneInMinutes, err := strconv.Atoi(req.MsgText)
 	if err != nil {
 		return page.BadInputResponse(err.Error())
 	}
 	timezoneInSeconds := timezoneInMinutes * 60
-	chat, err := ct.Chats.Get(req.Ctx, req.Chat.ID)
+	chat, err := ct.Chats.Get(req.Ctx, req.ChatID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "chats storage get")
 	}
 	if chat == nil {
-		chat = models.NewChat(req.Chat.ID, timezoneInSeconds, req.Chat.Title, req.Chat.IsPrivate)
+		chat = models.NewChat(req.ChatID, timezoneInSeconds)
 	} else {
 		chat.Timezone = timezoneInSeconds
 	}

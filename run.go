@@ -46,7 +46,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	readerService := msgsqueue.NewReader(incomingQueue, conf.MongoMessages.WorkersNum, presenter.OnMessage)
+	readerService := msgsqueue.NewReader(incomingQueue, conf.MongoMessages.WorkersNum, presenter.OnQueueMessage)
 	gLogger.Info("Starting bot service")
 	readerService.Start()
 	defer readerService.Stop()

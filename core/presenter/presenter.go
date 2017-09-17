@@ -44,24 +44,25 @@ func New(messenger messenger.Messenger, storage core.Storage, pageRegistry map[s
 		pageRegistry: pageRegistry, settings: settings}
 }
 
-func (uip *UIPresenter) OnMessage(ctx context.Context, msg *msgsqueue.Message) {
+func (uip *UIPresenter) OnQueueMessage(ctx context.Context, msg *msgsqueue.Message) {
 	if uip.needSkip(ctx, msg) {
 		return
 	}
-	ok := uip.handleMessage(ctx, msg)
+	req := core.NewRequestFromQueueMsg(ctx, msg)
+	ok := uip.HandleRequest(ctx, req)
 	if !ok {
 		uip.sendError(ctx, msg)
 	}
 }
 
-func (uip *UIPresenter) handleMessage(ctx context.Context, msg *msgsqueue.Message) bool {
+func (uip *UIPresenter) HandleRequest(ctx context.Context, req *core.Request) bool {
 	logger := uip.GetLogger(ctx)
-	session, err := uip.getOrCreateSession(ctx, msg)
+	session, err := uip.getOrCreateSession(ctx, req.ChatID)
 	if err != nil {
 		logger.Errorf("Cannot init chat session: %s", err)
 		return false
 	}
-	req := core.NewRequest(ctx, msg, session)
+	req.SetSession(session)
 	ok := uip.dispatchRequest(req)
 	if !ok {
 		return false
@@ -73,7 +74,7 @@ func (uip *UIPresenter) dispatchRequest(req *core.Request) bool {
 	logger := uip.GetLogger(req.Ctx)
 	req.Session.ResetIntents(req.Ctx)
 	if req.URL != nil {
-		logger.Infof("Request url %s from the message text", req.URL.Encode())
+		logger.Infof("Request url %s", req.URL.Encode())
 		req.Session.ResetInputHandler(req.Ctx)
 	} else if req.Session.InputHandler != nil {
 		logger.Infof("Session contains input handler %s, set it to the request url", req.Session.InputHandler.Encode())
@@ -125,15 +126,15 @@ func (uip *UIPresenter) saveSession(req *core.Request) bool {
 	return true
 }
 
-func (uip *UIPresenter) getOrCreateSession(ctx context.Context, msg *msgsqueue.Message) (*core.Session, error) {
-	session, err := uip.sessionStorage.Get(ctx, msg.Chat.ID)
+func (uip *UIPresenter) getOrCreateSession(ctx context.Context, chatID int) (*core.Session, error) {
+	session, err := uip.sessionStorage.Get(ctx, chatID)
 	if err != nil {
 		return nil, errors.Wrap(err, "storage get")
 	}
 	logger := uip.GetLogger(ctx)
 	if session == nil {
-		logger.WithField("chat_id", msg.Chat.ID).Info("session doesn't exist for chat, init a new one")
-		session = core.NewSession(msg.Chat.ID)
+		logger.WithField("chat_id", chatID).Info("session doesn't exist for chat, init a new one")
+		session = core.NewSession(chatID)
 	} else {
 		logger.WithField("session", session).Info("chat session from storage")
 	}

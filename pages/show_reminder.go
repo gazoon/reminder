@@ -23,7 +23,7 @@ func (sr *ShowReminder) Init(builder *page.PagesBuilder) error {
 }
 
 func (sr *ShowReminder) globalController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	chat, err := sr.Chats.Get(req.Ctx, req.Chat.ID)
+	chat, err := sr.Chats.Get(req.Ctx, req.ChatID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "chats storage get")
 	}

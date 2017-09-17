@@ -51,18 +51,14 @@ func (ms *MongoStorage) Save(ctx context.Context, chat *models.Chat) error {
 }
 
 type Chat struct {
-	ChatID    int    `bson:"chat_id"`
-	Title     string `bson:"title"`
-	Timezone  int    `bson:"timezone"`
-	IsPrivate bool   `bson:"is_private"`
+	ChatID   int `bson:"chat_id"`
+	Timezone int `bson:"timezone"`
 }
 
 func DataFromModel(m *models.Chat) *Chat {
 	return &Chat{
-		ChatID:    m.ID,
-		Title:     m.Title,
-		Timezone:  m.Timezone,
-		IsPrivate: m.IsPrivate,
+		ChatID:   m.ID,
+		Timezone: m.Timezone,
 	}
 }
 
@@ -72,9 +68,7 @@ func (c *Chat) toModel() (*models.Chat, error) {
 		return nil, errors.Wrap(err, "bad data for chat")
 	}
 	return &models.Chat{
-		ID:        c.ChatID,
-		Title:     c.Title,
-		Timezone:  c.Timezone,
-		IsPrivate: c.IsPrivate,
+		ID:       c.ChatID,
+		Timezone: c.Timezone,
 	}, nil
 }

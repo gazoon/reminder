@@ -82,25 +82,38 @@ func (u *URL) Copy() *URL {
 	return NewURL(u.Page, u.Action, u.Params)
 }
 
+type Message interface {
+}
+
+type TextMessage struct {
+	Text string
+}
+
 type Request struct {
 	Session *Session
 	Ctx     context.Context
-	Msg     *msgsqueue.Message
-	Chat    *msgsqueue.Chat
-	User    *msgsqueue.User
+	Msg     Message
+	MsgText string
+	ChatID  int
 	URL     *URL
 	Intents []*Intent
 }
 
-func NewRequest(ctx context.Context, msg *msgsqueue.Message, session *Session) *Request {
-	reqURL, err := NewURLFromStr(msg.Text)
+func NewRequestFromQueueMsg(ctx context.Context, queueMsg *msgsqueue.Message) *Request {
+	msgText := queueMsg.Text
+	reqURL, err := NewURLFromStr(msgText)
 	if err != nil {
 		reqURL = nil
 	} else if reqURL.IsRelative() {
 		reqURL = nil
 	}
-	return &Request{Ctx: ctx, Msg: msg, Chat: msg.Chat, User: msg.From, URL: reqURL, Session: session,
-		Intents: session.LocalIntents}
+	msg := &TextMessage{Text: msgText}
+	return &Request{Ctx: ctx, MsgText: msgText, Msg: msg, ChatID: queueMsg.Chat.ID, URL: reqURL}
+}
+
+func (r *Request) SetSession(s *Session) {
+	r.Session = s
+	r.Intents = s.LocalIntents
 }
 
 type Session struct {

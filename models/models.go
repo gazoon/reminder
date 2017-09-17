@@ -11,14 +11,12 @@ const (
 )
 
 type Chat struct {
-	ID        int
-	Title     string
-	IsPrivate bool
-	Timezone  int
+	ID       int
+	Timezone int
 }
 
-func NewChat(chatID, timezone int, title string, isPrivate bool) *Chat {
-	return &Chat{ID: chatID, Timezone: timezone, Title: title, IsPrivate: isPrivate}
+func NewChat(chatID, timezone int) *Chat {
+	return &Chat{ID: chatID, Timezone: timezone}
 }
 
 func (c *Chat) TimeLocation() *time.Location {

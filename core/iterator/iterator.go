@@ -74,7 +74,7 @@ func (iter *Iterator) sendText(args interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = iter.messenger.SendText(iter.req.Ctx, iter.req.Chat.ID, text)
+	_, err = iter.messenger.SendText(iter.req.Ctx, iter.req.ChatID, text)
 	return errors.Wrap(err, "messenger send text")
 }
 
@@ -118,7 +118,7 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	}
 	iter.logger.WithFields(log.Fields{"text": text, "buttons": messengerButtons}).
 		Info("Send text with connected buttons to the messenger")
-	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.Chat.ID, text, messengerButtons...)
+	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.ChatID, text, messengerButtons...)
 	return errors.Wrap(err, "messenger send text with buttons")
 }
 

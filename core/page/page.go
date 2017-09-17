@@ -267,9 +267,7 @@ func (bp *BasePage) getCommonScriptData(req *core.Request) map[string]interface{
 		params[k] = v
 	}
 	data := map[string]interface{}{
-		"message_text": req.Msg.Text,
-		"user":         req.User,
-		"chat":         req.Chat,
+		"message_text": req.MsgText,
 		"session":      req.Session.GlobalState,
 		"page_state":   req.Session.PagesStates[bp.Name],
 		"params":       params,

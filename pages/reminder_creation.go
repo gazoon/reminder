@@ -37,14 +37,14 @@ func (rc *ReminderCreation) Init(builder *page.PagesBuilder) error {
 }
 
 func (rc *ReminderCreation) onTitleController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	title := req.Msg.Text
+	title := req.MsgText
 	rc.UpdateState(req, "title", title)
 	rc.UpdateState(req, "last_enter", "title")
 	return nil, nil, nil
 }
 
 func (rc *ReminderCreation) onDateController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	chat, err := rc.Chats.Get(req.Ctx, req.Chat.ID)
+	chat, err := rc.Chats.Get(req.Ctx, req.ChatID)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "chats get failed")
 	}
@@ -55,7 +55,7 @@ func (rc *ReminderCreation) onDateController(req *core.Request) (map[string]inte
 	var remindAt time.Time
 	for _, format := range timeFormats {
 		var err error
-		remindAt, err = time.ParseInLocation(format, req.Msg.Text, loc)
+		remindAt, err = time.ParseInLocation(format, req.MsgText, loc)
 		if err == nil {
 			break
 		} else {
@@ -72,7 +72,7 @@ func (rc *ReminderCreation) onDateController(req *core.Request) (map[string]inte
 }
 
 func (rc *ReminderCreation) onDescriptionController(req *core.Request) (map[string]interface{}, *core.URL, error) {
-	description := req.Msg.Text
+	description := req.MsgText
 	rc.UpdateState(req, "description", description)
 	rc.UpdateState(req, "last_enter", "description")
 	return nil, nil, nil
@@ -89,7 +89,7 @@ func (rc *ReminderCreation) doneController(req *core.Request) (map[string]interf
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "form validation")
 	}
-	reminder := models.NewReminder(req.Chat.ID, form.Title, form.RemindAt, form.Description)
+	reminder := models.NewReminder(req.ChatID, form.Title, form.RemindAt, form.Description)
 	err = rc.Reminders.Save(req.Ctx, reminder)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reminders storage save ")
