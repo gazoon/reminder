@@ -4,7 +4,9 @@ import (
 	"context"
 	"reminder/models"
 
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/mongo"
+	"github.com/gazoon/bot_libs/queue"
 	"github.com/gazoon/bot_libs/utils"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -110,4 +112,60 @@ func (r *Reminder) toModel() (*models.Reminder, error) {
 		CreatedAt:   r.CreatedAt,
 		Description: r.Description,
 	}, nil
+}
+
+var (
+	gLogger = logging.WithPackage("notification_queue")
+)
+
+type Reader interface {
+	GetNext() (*models.Reminder, bool)
+	StopGivingMsgs()
+}
+
+type MongoReader struct {
+	client *mongo.Client
+	*queue.BaseConsumer
+}
+
+func NewMongoReader(database, collection, user, password, host string, port, timeout, poolSize, retriesNum, retriesInterval,
+	fetchDelay int) (*MongoReader, error) {
+
+	client, err := mongo.NewClient(database, collection, user, password, host, port, timeout, poolSize, retriesNum,
+		retriesInterval)
+	if err != nil {
+		return nil, err
+	}
+	return &MongoReader{client: client, BaseConsumer: queue.NewBaseConsumer(fetchDelay)}, nil
+}
+
+func (mq *MongoReader) GetNext() (*models.Reminder, bool) {
+	var reminder *models.Reminder
+	isStopped := mq.FetchLoop(func() bool {
+		var isFetched bool
+		reminder, isFetched = mq.tryGetNext()
+		return isFetched
+	})
+	return reminder, isStopped
+}
+
+func (mq *MongoReader) tryGetNext() (*models.Reminder, bool) {
+	result := &Reminder{}
+	err := mq.client.FindAndModify(context.Background(),
+		bson.M{"remind_at": bson.M{"$lt": time.Now()}},
+		"remind_at",
+		mgo.Change{Remove: true},
+		result)
+	if err != nil {
+		if err != mgo.ErrNotFound {
+			gLogger.Errorf("Cannot fetch document from mongo: %s", err)
+		}
+		return nil, false
+	}
+	reminder, err := result.toModel()
+	if err != nil {
+		gLogger.Errorf("Fetched document with bad reminder data: %s", err)
+		return nil, false
+	}
+	return reminder, true
 }
