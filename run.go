@@ -11,6 +11,7 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/gazoon/bot_libs/utils"
 	"github.com/pkg/errors"
+	"reminder/reminders_sender"
 )
 
 var (
@@ -47,6 +48,7 @@ func main() {
 		panic(err)
 	}
 	readerService := msgsqueue.NewReader(incomingQueue, conf.MongoMessages.WorkersNum, presenter.OnQueueMessage)
+	remindersSenderService := remsender.NewSender(presenter, remindersStorage, conf.MongoReminders.WorkersNum)
 	gLogger.Info("Starting bot service")
 	readerService.Start()
 	defer readerService.Stop()
@@ -55,6 +57,8 @@ func main() {
 	if err != nil {
 		panic(errors.Wrap(err, "cannot start poller"))
 	}
+	//remindersSenderService.Start()
+	defer remindersSenderService.Stop()
 	gLogger.Info("Server successfully started")
 	utils.WaitingForShutdown()
 }

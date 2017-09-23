@@ -20,4 +20,16 @@ actions:
     - send_buttons:
       - { text: "All reminders", handler: "page://reminder_list", intents: ["list","show","catalog"] }
 
+  when_ready:
+    - send_text:
+      - "You created this reminder at {{.created_at}}"
+    - send_text:
+      - "{{.title}}"
+    - send_text:
+      - "{{.description}}"
+    - send_buttons:
+      - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
+
+
+
 entry_action: show

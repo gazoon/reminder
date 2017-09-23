@@ -43,10 +43,10 @@ func CreateMongoMsgs() (*msgsqueue.MongoQueue, error) {
 	return incomingMongoQueue, errors.Wrap(err, "mongo messages queue")
 }
 
-func CreateMongoRemindersStorage() (reminders.Storage, error) {
+func CreateMongoRemindersStorage() (*reminders.MongoStorage, error) {
 	conf := config.GetInstance().MongoReminders
 	storage, err := reminders.NewMongoStorage(conf.Database, conf.Collection, conf.User, conf.Password, conf.Host,
-		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval)
+		conf.Port, conf.Timeout, conf.PoolSize, conf.RetriesNum, conf.RetriesInterval, conf.FetchDelay)
 	return storage, errors.Wrap(err, "mongo reminders storage")
 }
 

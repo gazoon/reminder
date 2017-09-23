@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/gazoon/bot_libs/logging"
 	"github.com/satori/go.uuid"
 )
 
@@ -56,4 +57,8 @@ func (r *Reminder) RemindAtLocal(chat *Chat) time.Time {
 
 func (r *Reminder) CreatedAtLocal(chat *Chat) time.Time {
 	return chat.ToLocalTime(r.CreatedAt)
+}
+
+func (r Reminder) String() string {
+	return logging.ObjToString(&r)
 }

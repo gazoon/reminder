@@ -49,15 +49,15 @@ func (uip *UIPresenter) OnQueueMessage(ctx context.Context, msg *msgsqueue.Messa
 		return
 	}
 	req := core.NewRequestFromQueueMsg(ctx, msg)
-	ok := uip.HandleRequest(ctx, req)
+	ok := uip.HandleRequest(req)
 	if !ok {
 		uip.sendError(ctx, msg)
 	}
 }
 
-func (uip *UIPresenter) HandleRequest(ctx context.Context, req *core.Request) bool {
-	logger := uip.GetLogger(ctx)
-	session, err := uip.getOrCreateSession(ctx, req.ChatID)
+func (uip *UIPresenter) HandleRequest(req *core.Request) bool {
+	logger := uip.GetLogger(req.Ctx)
+	session, err := uip.getOrCreateSession(req.Ctx, req.ChatID)
 	if err != nil {
 		logger.Errorf("Cannot init chat session: %s", err)
 		return false
