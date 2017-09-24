@@ -10,8 +10,8 @@ import (
 	"github.com/gazoon/bot_libs/queue/messages"
 	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 const (

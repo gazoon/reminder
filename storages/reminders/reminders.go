@@ -9,11 +9,11 @@ import (
 	"github.com/gazoon/bot_libs/queue"
 	"github.com/gazoon/bot_libs/utils"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 
 	"time"
 
-	"gopkg.in/mgo.v2"
+	"github.com/globalsign/mgo"
 )
 
 var (
