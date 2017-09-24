@@ -9,7 +9,6 @@ import (
 	templ "text/template"
 
 	"reminder/core"
-	"reminder/core/iterator"
 
 	"reflect"
 
@@ -281,13 +280,13 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 		return nil, errors.Errorf("there is no action view for %s", actionName)
 	}
 	visitedActions := map[string]bool{actionName: true}
-	var script []*iterator.Command
+	var script []*Command
 	var redirectURI *core.URL
 	for nextAction != nil {
 		currentAction := nextAction
 		nextAction = nil
 		for _, item := range currentAction {
-			cmd := &iterator.Command{Name: item.Key}
+			cmd := &Command{Name: item.Key}
 			evaluated, err := evaluateArgs(item.Value, data)
 			if err != nil {
 				return nil, errors.Wrapf(err, "args evaluation failed, args=%v data=%v command=%s", item.Value, data, cmd.Name)
@@ -329,9 +328,6 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 				}
 				break
 			} else {
-				if cmd.Name == iterator.ClearPageStateCmd && cmd.Args == nil {
-					cmd.Args = bp.Name
-				}
 				script = append(script, cmd)
 			}
 		}
@@ -344,12 +340,12 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 	return redirectURI, nil
 }
 
-func (bp *BasePage) parseButtonsArg(buttonsData interface{}) ([]*iterator.Button, error) {
+func (bp *BasePage) parseButtonsArg(buttonsData interface{}) ([]*Button, error) {
 	buttonsArray, ok := buttonsData.([]interface{})
 	if !ok {
 		return nil, errors.Errorf("expected array, not %v", buttonsData)
 	}
-	buttons := make([]*iterator.Button, len(buttonsArray))
+	buttons := make([]*Button, len(buttonsArray))
 	for i, buttonData := range buttonsArray {
 		parsedButton := &struct {
 			Text    string   `mapstructure:"text"`
@@ -367,13 +363,13 @@ func (bp *BasePage) parseButtonsArg(buttonsData interface{}) ([]*iterator.Button
 				return nil, errors.Wrapf(err, "incorrect button handler url %s", parsedButton.Handler)
 			}
 		}
-		buttons[i] = &iterator.Button{Text: parsedButton.Text, Intents: parsedButton.Intents, Handler: handlerURL}
+		buttons[i] = &Button{Text: parsedButton.Text, Intents: parsedButton.Intents, Handler: handlerURL}
 	}
 	return buttons, nil
 }
 
 func (bp *BasePage) transformURLs(commandName string, args interface{}) (interface{}, error) {
-	if commandName == redirectCmd || commandName == iterator.SetInputHandlerCmd {
+	if commandName == redirectCmd || commandName == SetInputHandlerCmd {
 		if args == nil {
 			return args, nil
 		}
@@ -387,10 +383,10 @@ func (bp *BasePage) transformURLs(commandName string, args interface{}) (interfa
 		}
 		return u, nil
 	}
-	if commandName == iterator.SendButtonsCmd {
+	if commandName == SendButtonsCmd {
 		buttons, err := bp.parseButtonsArg(args)
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot parse %s command args to buttons", iterator.SendButtonsCmd)
+			return nil, errors.Wrapf(err, "cannot parse %s command args to buttons", SendButtonsCmd)
 		}
 		return buttons, nil
 	}
@@ -405,7 +401,7 @@ func (bp *BasePage) transformURLs(commandName string, args interface{}) (interfa
 	}
 	buttons, err := bp.parseButtonsArg(buttonsArg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse buttons arg of the %s command to buttons", iterator.SendButtonsCmd)
+		return nil, errors.Wrapf(err, "cannot parse buttons arg of the %s command to buttons", SendButtonsCmd)
 	}
 	argsWithButtons := make(map[string]interface{}, len(argsAsObject))
 	for k, v := range argsAsObject {
@@ -426,14 +422,13 @@ func (bp *BasePage) parseURL(rawurl string) (*core.URL, error) {
 	return u, nil
 }
 
-func (bp *BasePage) executeScript(req *core.Request, script []*iterator.Command) error {
+func (bp *BasePage) executeScript(req *core.Request, script []*Command) error {
 	if len(script) == 0 {
 		return nil
 	}
-	req.Ctx = iterator.NewCtxWithPageName(req.Ctx, bp.Name)
-	iter := iterator.New(req, script, bp.messenger)
+	iter := NewIterator(req, bp, script, bp.messenger)
 	err := iter.Run()
-	return errors.Wrap(err, "script iteration falied")
+	return errors.Wrap(err, "script iteration failed")
 }
 
 func (bp *BasePage) GetRequestAction(req *core.Request) string {

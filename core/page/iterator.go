@@ -1,15 +1,15 @@
-package iterator
+package page
 
 import (
 	"reminder/core"
 
-	"context"
+	"strings"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 var gLogger = logging.WithPackage("iterator")
@@ -26,7 +26,6 @@ const (
 
 	SendButtonsCmd = "send_buttons"
 	ForeachCmd     = "foreach"
-	pageNameCtxKey = ctxKey(1)
 )
 
 var foreachShortcuts = map[string]string{
@@ -53,20 +52,14 @@ type Iterator struct {
 	messenger  messenger.Messenger
 	req        *core.Request
 	initScript []*Command
+	page       *BasePage
 	logger     *log.Entry
 }
 
-func NewCtxWithPageName(ctx context.Context, pageName string) context.Context {
-	return context.WithValue(ctx, pageNameCtxKey, pageName)
-}
-
-func New(req *core.Request, script []*Command, messenger messenger.Messenger) *Iterator {
+func NewIterator(req *core.Request, currentPage *BasePage, script []*Command, messenger messenger.Messenger) *Iterator {
 	logger := logging.FromContextAndBase(req.Ctx, gLogger)
-	pageName := req.Ctx.Value(pageNameCtxKey)
-	if pageName != nil {
-		logger = logger.WithField("iteration_page", pageName)
-	}
-	return &Iterator{req: req, messenger: messenger, initScript: script, logger: logger}
+	logger = logger.WithField("iteration_page", currentPage.Name)
+	return &Iterator{req: req, page: currentPage, messenger: messenger, initScript: script, logger: logger}
 }
 
 func (iter *Iterator) sendText(args interface{}) error {
@@ -81,7 +74,7 @@ func (iter *Iterator) sendText(args interface{}) error {
 func (iter *Iterator) clearPageState(args interface{}) error {
 	pageName, ok := args.(string)
 	if !ok {
-		return errors.Errorf("called with not string arg %v", args)
+		pageName = iter.page.Name
 	}
 	delete(iter.req.Session.PagesStates, pageName)
 	return nil
