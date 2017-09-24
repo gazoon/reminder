@@ -51,22 +51,19 @@ func (rc *ReminderCreation) onDateController(req *core.Request) (map[string]inte
 	if chat == nil {
 		return map[string]interface{}{"no_timezone": true}, nil, nil
 	}
-	loc := chat.TimeLocation()
 	var remindAt time.Time
 	for _, format := range timeFormats {
 		var err error
-		remindAt, err = time.ParseInLocation(format, req.MsgText, loc)
+		remindAt, err = time.Parse(format, req.MsgText)
 		if err == nil {
 			break
-		} else {
-			fmt.Println(err)
 		}
-
 	}
 	if remindAt.IsZero() {
 		return page.BadInputResponse(fmt.Sprintf("cannot parse in any of these formats: %v", timeFormats))
 	}
-	rc.UpdateState(req, "remind_at", remindAt)
+	remindAtUTC := chat.ToUTC(remindAt)
+	rc.UpdateState(req, "remind_at", remindAtUTC)
 	rc.UpdateState(req, "last_enter", "date")
 	return nil, nil, nil
 }

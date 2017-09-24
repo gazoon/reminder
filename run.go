@@ -57,7 +57,7 @@ func main() {
 	if err != nil {
 		panic(errors.Wrap(err, "cannot start poller"))
 	}
-	//remindersSenderService.Start()
+	remindersSenderService.Start()
 	defer remindersSenderService.Stop()
 	gLogger.Info("Server successfully started")
 	utils.WaitingForShutdown()

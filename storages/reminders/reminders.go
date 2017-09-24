@@ -101,7 +101,7 @@ func (ms *MongoStorage) GetNext(ctx context.Context) (*models.Reminder, bool) {
 func (ms *MongoStorage) tryGetNext(ctx context.Context) (*models.Reminder, bool) {
 	result := &Reminder{}
 	err := ms.client.FindAndModify(ctx,
-		bson.M{"remind_at": bson.M{"$lt": time.Now()}},
+		bson.M{"remind_at": bson.M{"$lt": time.Now().UTC()}},
 		"remind_at",
 		mgo.Change{Remove: true},
 		result)

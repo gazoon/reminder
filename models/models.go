@@ -20,14 +20,16 @@ func NewChat(chatID, timezone int) *Chat {
 	return &Chat{ID: chatID, Timezone: timezone}
 }
 
-func (c *Chat) TimeLocation() *time.Location {
-	loc := time.FixedZone("", c.Timezone)
-	return loc
+func (c *Chat) timeDelta() time.Duration {
+	return time.Hour * time.Duration(c.Timezone)
 }
 
 func (c *Chat) ToLocalTime(t time.Time) time.Time {
-	loc := c.TimeLocation()
-	return t.In(loc)
+	return t.Add(c.timeDelta())
+}
+
+func (c *Chat) ToUTC(t time.Time) time.Time {
+	return t.Add(-c.timeDelta())
 }
 
 type Reminder struct {
@@ -46,7 +48,7 @@ func NewReminder(chatID int, title string, remindAt time.Time, description *stri
 		ChatID:      chatID,
 		Title:       title,
 		RemindAt:    remindAt,
-		CreatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
 		Description: description,
 	}
 }

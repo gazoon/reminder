@@ -13,7 +13,7 @@ actions:
     - send_text:
         if: $params.error_msg
         then: "Problems with your input: {{.params.error_msg}}. Type again."
-        else: "Type: {reminder_number} delete/show"
+        else: "Type: delete/show {reminder_number}"
     - send_buttons:
       - { text: "Home", handler: "page://home", intents: ["home","root","main"] }
 

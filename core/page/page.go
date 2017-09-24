@@ -13,7 +13,6 @@ import (
 
 	"reflect"
 
-	fmt "fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gazoon/bot_libs/logging"
 	"github.com/gazoon/bot_libs/messenger"
@@ -333,7 +332,6 @@ func (bp *BasePage) renderResponse(req *core.Request, data map[string]interface{
 				if cmd.Name == iterator.ClearPageStateCmd && cmd.Args == nil {
 					cmd.Args = bp.Name
 				}
-				fmt.Println(cmd.Args)
 				script = append(script, cmd)
 			}
 		}
