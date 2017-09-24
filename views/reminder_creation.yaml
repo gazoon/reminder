@@ -8,6 +8,7 @@ actions:
     - goto: enter_title
 
   enter_title:
+    - save_sent_msg_ids: true
     - set_input_handler: "on_title"
     - send_text: "Enter title:"
 
@@ -15,6 +16,7 @@ actions:
     - redirect: "enter_date"
 
   enter_date:
+    - save_sent_msg_ids: true
     - set_input_handler: "on_date"
     - send_text:
         if: $params.error_msg
@@ -27,10 +29,11 @@ actions:
     - redirect: "enter_description"
 
   no_timezone:
-    - sent_text: "Sorry, but you have to specify your timezone first"
+    - send_text: "Sorry, but you have to specify your timezone first"
     - redirect: "page://change_timezone"
 
   enter_description:
+    - save_sent_msg_ids: true
     - set_input_handler: "on_description"
     - send_text: "Enter Description (optional):"
     - send_buttons:

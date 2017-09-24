@@ -67,7 +67,7 @@ func CreateUIPresenter(messenger messenger.Messenger, remindersStorage reminders
 		&pages.NotFound{},
 		&pages.ReminderList{Reminders: remindersStorage},
 		&pages.ShowReminder{Reminders: remindersStorage, Chats: chatsStorage},
-		&pages.ReminderCreation{Reminders: remindersStorage, Chats: chatsStorage},
+		&pages.ReminderCreation{Reminders: remindersStorage, Chats: chatsStorage, Messenger: messenger},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "pages registry")

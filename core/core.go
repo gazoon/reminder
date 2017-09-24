@@ -90,13 +90,15 @@ type TextMessage struct {
 }
 
 type Request struct {
-	Session *Session
-	Ctx     context.Context
-	Msg     Message
-	MsgText string
-	ChatID  int
-	URL     *URL
-	Intents []*Intent
+	Session        *Session
+	Ctx            context.Context
+	Msg            Message
+	MsgID          int
+	MsgText        string
+	ChatID         int
+	URL            *URL
+	Intents        []*Intent
+	SaveSentMsgIDs bool
 }
 
 func NewRequestFromQueueMsg(ctx context.Context, queueMsg *msgsqueue.Message) *Request {
@@ -108,7 +110,7 @@ func NewRequestFromQueueMsg(ctx context.Context, queueMsg *msgsqueue.Message) *R
 		reqURL = nil
 	}
 	msg := &TextMessage{Text: msgText}
-	return &Request{Ctx: ctx, MsgText: msgText, Msg: msg, ChatID: queueMsg.Chat.ID, URL: reqURL}
+	return &Request{Ctx: ctx, MsgText: msgText, Msg: msg, MsgID: queueMsg.MessageID, ChatID: queueMsg.Chat.ID, URL: reqURL}
 }
 
 func (r *Request) SetSession(s *Session) {

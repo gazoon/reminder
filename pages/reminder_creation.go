@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"github.com/gazoon/bot_libs/messenger"
 	"github.com/gazoon/bot_libs/utils"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -22,6 +23,7 @@ type ReminderCreation struct {
 
 	Reminders reminders.Storage
 	Chats     chats.Storage
+	Messenger messenger.Messenger
 }
 
 func (rc *ReminderCreation) Init(builder *page.PagesBuilder) error {
@@ -90,6 +92,12 @@ func (rc *ReminderCreation) doneController(req *core.Request) (map[string]interf
 	err = rc.Reminders.Save(req.Ctx, reminder)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reminders storage save ")
+	}
+	for _, msgID := range rc.GetSentMsgIDs(req) {
+		err := rc.Messenger.DeleteMessage(req.Ctx, msgID, req.ChatID)
+		if err != nil {
+			rc.GetLogger(req.Ctx).Warnf("Cannot delete msg %d after reminder creation: %s", msgID, err)
+		}
 	}
 	return nil, nil, nil
 }

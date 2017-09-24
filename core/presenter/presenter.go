@@ -16,7 +16,7 @@ const (
 )
 
 var (
-	DefaultSettings = Settings{SupportGroups: false, OnlyAppealsInGroups: true}
+	DefaultSettings = Settings{SupportGroups: true, OnlyAppealsInGroups: false}
 )
 
 type Settings struct {

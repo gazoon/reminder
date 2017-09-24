@@ -236,7 +236,44 @@ func (bp *BasePage) buildIntents() ([]*core.Intent, error) {
 	return intents, nil
 }
 
-// global session state and page state always should be not nil maps
+func (bp *BasePage) appendInState(req *core.Request, key string, newValue interface{}) {
+	state := bp.GetState(req)
+	msgIDs, _ := state[key].([]interface{})
+	msgIDs = append(msgIDs, newValue)
+	state[key] = msgIDs
+	bp.SetState(req, state)
+}
+
+func (bp *BasePage) getIntListFromState(req *core.Request, key string) []int {
+	state := bp.GetState(req)
+	array, _ := state[key].([]interface{})
+	var msgIDs []int
+	for _, value := range array {
+		msgID, ok := value.(int)
+		if !ok {
+			continue
+		}
+		msgIDs = append(msgIDs, msgID)
+	}
+	return msgIDs
+}
+
+func (bp *BasePage) GetSentMsgIDs(req *core.Request) []int {
+	return bp.getIntListFromState(req, "sent_msg_ids")
+}
+
+func (bp *BasePage) GetUserMsgIDs(req *core.Request) []int {
+	return bp.getIntListFromState(req, "user_msg_ids")
+}
+
+func (bp *BasePage) StoreSentMsgID(req *core.Request, msgID int) {
+	bp.appendInState(req, "sent_msg_ids", msgID)
+}
+
+func (bp *BasePage) StoreUserMsgID(req *core.Request, msgID int) {
+	bp.appendInState(req, "user_msg_ids", msgID)
+}
+
 func (bp *BasePage) GetState(req *core.Request) map[string]interface{} {
 	state, ok := req.Session.PagesStates[bp.Name]
 	if !ok {

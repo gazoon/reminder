@@ -19,6 +19,8 @@ type ctxKey int
 const (
 	SendTextCmd                  = "send_text"
 	ClearPageStateCmd            = "clear_page_state"
+	SaveUserMsgCmd               = "save_user_msg_id"
+	SaveSentMsgIDsCmd            = "save_sent_msg_ids"
 	SendTextWithButtonsCmd       = "send_text_with_buttons"
 	SendAttachmentCmd            = "send_attachment"
 	SendAttachmentWithButtonsCmd = "send_attachment_with_buttons"
@@ -67,8 +69,32 @@ func (iter *Iterator) sendText(args interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = iter.messenger.SendText(iter.req.Ctx, iter.req.ChatID, text)
+	req := iter.req
+	msgID, err := iter.messenger.SendText(req.Ctx, req.ChatID, text)
+	iter.saveSentMsgID(msgID)
 	return errors.Wrap(err, "messenger send text")
+}
+
+func (iter *Iterator) saveSentMsgID(msgID int) {
+	req := iter.req
+	if req.SaveSentMsgIDs {
+		iter.page.StoreSentMsgID(req, msgID)
+	}
+}
+
+func (iter *Iterator) saveUserMsgID(args interface{}) error {
+	req := iter.req
+	iter.page.StoreUserMsgID(req, req.MsgID)
+	return nil
+}
+
+func (iter *Iterator) setSaveSentMsgIDs(args interface{}) error {
+	flagValue, ok := args.(bool)
+	if !ok {
+		return errors.Errorf("expected bool args, got: %v", flagValue)
+	}
+	iter.req.SaveSentMsgIDs = flagValue
+	return nil
 }
 
 func (iter *Iterator) clearPageState(args interface{}) error {
@@ -93,6 +119,7 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "'buttons' param")
 	}
+	req := iter.req
 	messengerButtons := make([]*messenger.Button, len(buttons))
 	for i, button := range buttons {
 		var payload string
@@ -106,12 +133,13 @@ func (iter *Iterator) sendTextWithButtons(args interface{}) error {
 			if button.Handler == nil {
 				return errors.Errorf("button with intents without handler %+v", button)
 			}
-			iter.req.Session.AddIntent(button.Intents, button.Handler)
+			req.Session.AddIntent(button.Intents, button.Handler)
 		}
 	}
 	iter.logger.WithFields(log.Fields{"text": text, "buttons": messengerButtons}).
 		Info("Send text with connected buttons to the messenger")
-	_, err = iter.messenger.SendTextWithButtons(iter.req.Ctx, iter.req.ChatID, text, messengerButtons...)
+	msgID, err := iter.messenger.SendTextWithButtons(req.Ctx, req.ChatID, text, messengerButtons...)
+	iter.saveSentMsgID(msgID)
 	return errors.Wrap(err, "messenger send text with buttons")
 }
 
@@ -257,6 +285,8 @@ func (iter *Iterator) execute(resultScript []*Command) error {
 		SendAttachmentCmd:            iter.sendAttachment,
 		SetInputHandlerCmd:           iter.setInputHandler,
 		ClearPageStateCmd:            iter.clearPageState,
+		SaveUserMsgCmd:               iter.saveUserMsgID,
+		SaveSentMsgIDsCmd:            iter.setSaveSentMsgIDs,
 	}
 	for _, cmd := range resultScript {
 		cmdHandler, ok := commandsMapping[cmd.Name]
